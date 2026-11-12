@@ -1,4 +1,65 @@
-<!doctype html><html lang="pt-AO"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>Painel administrativo | BRANQUEX</title><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/admin/assets/css/admin.css"><script type="module" src="/admin/assets/js/admin.js"></script></head><body><div id="login-screen" class="login-screen"><form id="login-form" class="login-card"><a class="brand" href="/"><span class="brand-mark">B</span><span>BRANQU<span class="brand-light">EX</span><small>ADMINISTRAÇÃO</small></span></a><div class="eyebrow">ÁREA RESERVADA</div><h1>Bem-vindo de volta.</h1><p>Entre no painel de gestão da loja.</p><label class="field">Utilizador<input name="user" autocomplete="username" required></label><label class="field">Palavra-passe<input name="password" type="password" autocomplete="current-password" required></label><button class="btn btn-primary btn-block">Entrar no painel</button><small class="login-hint">A autenticação de produção deve ser configurada antes da publicação.</small><div id="login-error" class="feedback"></div></form></div>
-<div id="admin-app" class="admin-shell" hidden><aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">B</span><span>BRANQU<span class="brand-light">EX</span><small>PAINEL DE GESTÃO</small></span></a><div class="side-label">MENU PRINCIPAL</div><nav id="side-nav"><button data-view="dashboard" class="active">▦ <span>Dashboard</span></button><button data-view="products">◇ <span>Produtos</span></button><button data-view="orders">▤ <span>Encomendas</span><b id="new-order-count" class="nav-count"></b></button><button data-view="stock">▥ <span>Stock</span></button><button data-view="deliveries">⌁ <span>Entregas</span></button><button data-view="finance">◫ <span>Finanças</span></button><button data-view="settings">⚙ <span>Configurações</span></button></nav><div class="sidebar-bottom"><div class="admin-avatar">A</div><div><strong>Administrador</strong><small>Conta demonstrativa</small></div><button id="logout-btn" title="Terminar sessão">↗</button></div></aside>
-<main class="admin-main"><header class="admin-top"><button id="mobile-nav-toggle" class="mobile-nav-toggle">☰</button><div><span class="eyebrow">BRANQUEX / GESTÃO</span><h1 id="view-title">Dashboard</h1></div><div class="top-actions"><a href="/" class="store-link">Ver loja ↗</a></div></header><div id="view-root" class="view-root"></div></main></div>
-<dialog id="app-modal" class="app-modal"><div class="modal-shell"><button class="modal-close" type="button" aria-label="Fechar">×</button><div id="modal-content"></div></div></dialog><div id="toast" class="toast" role="status"></div></body></html>
+<!doctype html>
+<html lang="pt-AO">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Painel administrativo | BRANQUEX</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin/assets/css/admin.css">
+  <script type="module" src="/admin/assets/js/admin.js"></script>
+</head>
+<body>
+  <div id="login-screen" class="login-screen">
+    <form id="login-form" class="login-card">
+      <a class="brand" href="/"><span class="brand-mark">B</span><span>BRANQU<span class="brand-light">EX</span><small>ADMINISTRAÇÃO</small></span></a>
+      <div class="eyebrow">ÁREA RESERVADA</div>
+      <h1>Bem-vindo de volta.</h1>
+      <p>Entre no painel de gestão da loja.</p>
+      <label class="field">Email de Administrador<input name="email" type="email" autocomplete="username" required placeholder="admin@branqex.com"></label>
+      <label class="field">Palavra-passe<input name="password" type="password" autocomplete="current-password" required placeholder="••••••••"></label>
+      <button class="btn btn-primary btn-block" id="login-btn">Entrar no painel</button>
+      <div id="login-error" class="feedback"></div>
+    </form>
+  </div>
+
+  <div id="admin-app" class="admin-shell" hidden>
+    <aside class="sidebar">
+      <a class="brand" href="/"><span class="brand-mark">B</span><span>BRANQU<span class="brand-light">EX</span><small>PAINEL DE GESTÃO</small></span></a>
+      <div class="side-label">MENU PRINCIPAL</div>
+      <nav id="side-nav">
+        <button data-view="dashboard" class="active">▦ <span>Dashboard</span></button>
+        <button data-view="products">◇ <span>Produtos</span></button>
+        <button data-view="orders">▤ <span>Encomendas</span><b id="new-order-count" class="nav-count"></b></button>
+        <button data-view="stock">▥ <span>Stock</span></button>
+        <button data-view="deliveries">⌁ <span>Entregas</span></button>
+        <button data-view="finance">◫ <span>Finanças</span></button>
+        <button data-view="settings">⚙ <span>Configurações</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="admin-avatar">A</div>
+        <div><strong id="admin-user-email">Administrador</strong><small>Sessão ativa</small></div>
+        <button id="logout-btn" title="Terminar sessão">↗</button>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-top">
+        <button id="mobile-nav-toggle" class="mobile-nav-toggle">☰</button>
+        <div><span class="eyebrow">BRANQUEX / GESTÃO</span><h1 id="view-title">Dashboard</h1></div>
+        <div class="top-actions"><a href="/" class="store-link">Ver loja ↗</a></div>
+      </header>
+      <div id="view-root" class="view-root"></div>
+    </main>
+  </div>
+
+  <dialog id="app-modal" class="app-modal">
+    <div class="modal-shell">
+      <button class="modal-close" type="button" aria-label="Fechar">×</button>
+      <div id="modal-content"></div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status"></div>
+</body>
+</html>
