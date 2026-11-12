@@ -3,20 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
   <meta name="robots" content="noindex,nofollow,noarchive">
   <title>Painel administrativo | BRANQUEX</title>
+  <style>[hidden]{display:none!important}</style>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/admin/assets/css/admin.css">
-  <script type="module" src="/admin/assets/js/admin.js"></script>
+  <link rel="stylesheet" href="assets/css/admin.css">
+  <script type="module" src="assets/js/admin.js"></script>
 </head>
 <body>
+  <noscript><p style="padding:24px;font-family:system-ui,sans-serif">Ative o JavaScript para usar o painel.</p></noscript>
   <div id="login-screen" class="login-screen">
     <form id="login-form" class="login-card">
       <a class="brand" href="/"><span class="brand-mark">B</span><span>BRANQU<span class="brand-light">EX</span><small>ADMINISTRAÇÃO</small></span></a>
       <div class="eyebrow">ÁREA RESERVADA</div>
       <h1>Bem-vindo de volta.</h1>
       <p>Entre no painel de gestão da loja.</p>
-      <label class="field">Email de Administrador<input name="email" type="email" autocomplete="username" required placeholder="admin@branqex.com"></label>
+      <label class="field">Email de Administrador<input name="email" type="email" autocomplete="username" required placeholder="admin@branquex.com"></label>
       <label class="field">Palavra-passe<input name="password" type="password" autocomplete="current-password" required placeholder="••••••••"></label>
       <button class="btn btn-primary btn-block" id="login-btn">Entrar no painel</button>
       <div id="login-error" class="feedback"></div>
