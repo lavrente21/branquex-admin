@@ -33,3 +33,20 @@ th{white-space:nowrap}
 .image-preview img{max-width:100%;height:auto}
 @media (max-width:700px){.modal-grid,.detail-grid{grid-template-columns:1fr}.dashboard-grid,.setting-row{grid-template-columns:1fr}.toast{left:12px;right:12px;bottom:12px;max-width:none}.modal-shell{padding:20px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* Encomendas: filtros, agrupamento, etiquetas */
+.order-filters{align-items:flex-end;gap:10px 12px}
+.order-filters .tf{display:flex;flex-direction:column;gap:4px;font-size:8px;font-weight:800;letter-spacing:.5px;color:#8a8095;text-transform:uppercase}
+.order-filters .tf input,.order-filters .tf select{min-width:0;width:auto;font-size:10px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink)}
+.order-filters .tf:first-child{flex:1 1 220px}
+.order-filters .tf:first-child input{width:100%}
+.order-filters .tf input[type=number]{width:74px}
+.order-filters .tf input[type=date]{width:128px}
+.table-wrap table.orders-table{min-width:1500px}
+.group-row td{background:#f6f1fd;color:#4b2a87;border-top:1px solid var(--line);padding:10px 15px}
+.group-row small{color:var(--muted);margin-left:10px;font-size:9px;font-weight:500}
+.zone-tag{display:inline-block;background:#f2ebff;color:var(--purple);border-radius:20px;padding:4px 9px;font-size:9px;font-weight:800}
+.qty-pill{display:inline-grid;place-items:center;min-width:26px;height:22px;padding:0 6px;border-radius:7px;background:#eee6fc;color:var(--purple);font-weight:800;font-size:10px}
+@media(max-width:700px){.order-filters .tf{flex:1 1 130px}.order-filters .tf input,.order-filters .tf select{width:100%!important}}
+.orders-table td.wrap-cell{white-space:normal;min-width:190px;max-width:260px;line-height:1.45}
+.bar-col>small:first-child{font-size:8px;font-weight:800;color:var(--purple);min-height:10px}
