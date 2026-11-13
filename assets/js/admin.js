@@ -84,11 +84,11 @@ function stat(label, value, note, icon = '◈') { return `<div class="stat-card"
 
 function render() {
   const d = appState;
-  const titles = { dashboard: 'Dashboard', products: 'Produtos', orders: 'Encomendas', stock: 'Stock', deliveries: 'Entregas', finance: 'Finanças', settings: 'Configurações' };
+  const titles = { dashboard: 'Dashboard', products: 'Produtos', orders: 'Encomendas', customers: 'Clientes', stock: 'Stock', deliveries: 'Entregas', finance: 'Finanças', settings: 'Configurações' };
   $('#view-title').textContent = titles[current];
   $('#new-order-count').textContent = d.orders.filter(o => o.status === 'Aguardando confirmação').length || '';
   const root = $('#view-root');
-  root.innerHTML = ({ dashboard: dashboard, products: products, orders: orders, stock: stock, deliveries: deliveries, finance: finance, settings: settings }[current])(d);
+  root.innerHTML = ({ dashboard: dashboard, products: products, orders: orders, customers: customers, stock: stock, deliveries: deliveries, finance: finance, settings: settings }[current])(d);
   bindView();
 }
 
@@ -104,13 +104,13 @@ function dashboard(d) {
     return { label: pad2(date.getDate()) + '/' + pad2(date.getMonth() + 1), sum: day.reduce((a, o) => a + Number(o.total), 0), count: day.length };
   });
   const max = Math.max(1, ...bars.map(x => x.sum));
-  return `${pageHead('Visão geral', 'Resumo da atividade da sua loja.')}<div class="stats-grid">${stat('Total de encomendas', d.orders.length, 'Registos em base de dados', '▤')}${stat('Novas encomendas', d.orders.filter(o => o.status === 'Aguardando confirmação').length, 'Aguardam confirmação', '✦')}${stat('Encomendas pendentes', pending.length, 'Em processamento', '◷')}${stat('Encomendas entregues', delivered.length, 'Entregues ou levantadas', '✓')}${stat('Stock disponível', d.products.reduce((a, p) => a + Number(p.stock || 0), 0), 'Unidades registadas', '▥')}${stat('Valores recebidos', money(revenue), 'Pagamentos registados', '◫')}${stat('Produtos ativos', d.products.filter(p => p.active && p.published).length, 'Visíveis na loja', '◇')}${stat('Stock baixo', d.products.filter(p => p.stock <= p.min_stock).length, 'No limite ou abaixo', '!')}</div><div class="dashboard-grid"><section class="panel"><h3>Volume de encomendas · últimos 14 dias</h3><div class="bar-chart">${bars.map(x => `<div class="bar-col"><small>${x.count || ''}</small><div class="bar" title="${x.label} · ${x.count} encomenda(s) · ${money(x.sum)}" style="height:${Math.max(4, x.sum / max * 100)}%"></div><small>${x.label}</small></div>`).join('')}</div></section><section class="panel"><h3>Encomendas recentes</h3><div class="simple-list">${d.orders.slice(0, 5).map(o => `<div class="list-row"><div><strong>${esc(o.reference)}</strong><small>${esc(o.customer?.name || 'Cliente')}</small></div><div style="text-align:right"><strong>${money(o.total)}</strong><small>${esc(o.status)}</small></div></div>`).join('') || '<div class="empty-state">Ainda não existem encomendas.</div>'}</div></section></div><section class="panel" style="margin-top:15px"><h3>Alertas de stock baixo</h3><div class="simple-list">${d.products.filter(p => p.stock <= p.min_stock).map(p => `<div class="list-row"><div><strong>${esc(p.name)}</strong><small>Stock mínimo: ${p.min_stock}</small></div><span class="status ${p.stock <= 0 ? 'out' : 'pending'}">${p.stock <= 0 ? 'Esgotado' : p.stock + ' unidades'}</span></div>`).join('') || '<div class="empty-state">Não existem alertas de stock.</div>'}</div></section>`;
+  return `${pageHead('Visão geral', 'Resumo da atividade da sua loja.')}<div class="stats-grid">${stat('Total de encomendas', d.orders.length, 'Registos em base de dados', '▤')}${stat('Novas encomendas', d.orders.filter(o => o.status === 'Aguardando confirmação').length, 'Aguardam confirmação', '✦')}${stat('Encomendas pendentes', pending.length, 'Em processamento', '◷')}${stat('Encomendas entregues', delivered.length, 'Entregues ou levantadas', '✓')}${stat('Stock disponível', d.products.reduce((a, p) => a + Number(p.stock || 0), 0), 'Unidades registadas', '▥')}${stat('Valores recebidos', money(revenue), 'Pagamentos registados', '◫')}${stat('Produtos ativos', d.products.filter(p => p.active && p.published).length, 'Visíveis na loja', '◇')}${stat('Stock baixo', d.products.filter(p => p.stock <= p.min_stock).length, 'No limite ou abaixo', '!')}${dupCard()}</div><div class="dashboard-grid"><section class="panel"><h3>Volume de encomendas · últimos 14 dias</h3><div class="bar-chart">${bars.map(x => `<div class="bar-col"><small>${x.count || ''}</small><div class="bar" title="${x.label} · ${x.count} encomenda(s) · ${money(x.sum)}" style="height:${Math.max(4, x.sum / max * 100)}%"></div><small>${x.label}</small></div>`).join('')}</div></section><section class="panel"><h3>Encomendas recentes</h3><div class="simple-list">${d.orders.slice(0, 5).map(o => `<div class="list-row"><div><strong>${esc(o.reference)}</strong><small>${esc(o.customer?.name || 'Cliente')}</small></div><div style="text-align:right"><strong>${money(o.total)}</strong><small>${esc(o.status)}</small></div></div>`).join('') || '<div class="empty-state">Ainda não existem encomendas.</div>'}</div></section></div><section class="panel" style="margin-top:15px"><h3>Alertas de stock baixo</h3><div class="simple-list">${d.products.filter(p => p.stock <= p.min_stock).map(p => `<div class="list-row"><div><strong>${esc(p.name)}</strong><small>Stock mínimo: ${p.min_stock}</small></div><span class="status ${p.stock <= 0 ? 'out' : 'pending'}">${p.stock <= 0 ? 'Esgotado' : p.stock + ' unidades'}</span></div>`).join('') || '<div class="empty-state">Não existem alertas de stock.</div>'}</div></section>`;
 }
 
 function products(d) { return `${pageHead('Gestão de produtos', 'Adicione, edite e publique produtos na loja.', '<button class="btn btn-primary" data-action="add-product">＋ Adicionar produto</button>')}<section class="table-panel"><div class="table-toolbar"><input id="product-search" placeholder="Pesquisar produto..."><select id="product-filter"><option value="all">Todos os estados</option><option value="active">Ativos e publicados</option><option value="hidden">Ocultos ou inativos</option><option value="out">Esgotados</option></select><span class="toolbar-spacer"></span><small class="muted">${d.products.length} produto(s)</small></div><div class="table-wrap"><table><thead><tr><th>PRODUTO</th><th>PREÇO</th><th>STOCK</th><th>VISIBILIDADE</th><th>DESTAQUE</th><th>AÇÕES</th></tr></thead><tbody id="products-body">${d.products.map(p => productRow(p)).join('') || '<tr><td colspan="6" class="empty-state">Nenhum produto registado.</td></tr>'}</tbody></table></div></section>`; }
 function productRow(p) { return `<tr data-product-row="${esc(p.id)}" data-search="${esc((String(p.name) + ' ' + (p.category || '')).toLowerCase())}" data-state="${p.active && p.published ? 'active' : 'hidden'}${p.stock <= 0 ? ' out' : ''}"><td><div style="display:flex;align-items:center;gap:10px"><span class="product-thumb">${p.image ? `<img src="${esc(p.image)}" style="width:100%;height:100%;object-fit:cover;border-radius:7px">` : 'B'}</span><div><strong>${esc(p.name)}</strong><small class="muted" style="display:block;margin-top:3px">${esc(p.category || 'Sem categoria')}</small></div></div></td><td><strong>${money(effectivePrice(p))}</strong>${p.promo_price ? `<small class="muted" style="display:block;text-decoration:line-through">${money(p.price)}</small>` : ''}</td><td>${p.stock} un.</td><td><span class="status ${p.active && p.published ? 'active' : 'inactive'}">${p.active && p.published ? 'Publicado' : 'Oculto'}</span></td><td>${p.featured ? 'Sim' : '—'}</td><td><button class="action-btn" data-action="edit-product" data-id="${p.id}">Editar</button><button class="action-btn" data-action="toggle-product" data-id="${p.id}">${p.published ? 'Ocultar' : 'Publicar'}</button><button class="action-btn danger" data-action="delete-product" data-id="${p.id}">Eliminar</button></td></tr>`; }
 // ===== Encomendas: filtros, ordenação e agrupamento (hora · zona · quantidade) =====
-const orderDefaults = { q: '', status: 'all', zone: 'all', from: '', to: '', hFrom: '', hTo: '', qMin: '', qMax: '', sort: 'recent', group: 'none' };
+const orderDefaults = { q: '', status: 'all', zone: 'all', from: '', to: '', hFrom: '', hTo: '', qMin: '', qMax: '', sort: 'recent', group: 'none', alert: 'all' };
 const orderUI = { ...orderDefaults };
 const pad2 = n => String(n).padStart(2, '0');
 const orderQty = o => (o.items || []).reduce((a, i) => a + num(i.quantity), 0);
@@ -128,6 +128,47 @@ const orderPayment = o => {
   if (paid > 0) return { label: 'Parcial', cls: 'pending', paid };
   return { label: 'Por pagar', cls: 'inactive', paid };
 };
+const phoneKey = o => { const d = String(o.customer?.phone || '').replace(/\D/g, ''); return d.length > 9 ? d.slice(-9) : d; };
+const orderSig = o => (o.items || []).map(i => (i.product_id || i.product_name) + 'x' + i.quantity).sort().join('|');
+let orderFlagMap = new Map();
+// Marca encomendas ativas do mesmo telefone no mesmo dia: "dup" = mesmos produtos e quantidades; senão, "multi".
+function orderFlags() {
+  const groups = new Map(), flags = new Map();
+  appState.orders.filter(o => o.status !== 'Cancelada' && phoneKey(o)).forEach(o => {
+    const k = phoneKey(o) + '#' + orderDay(o);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(o);
+  });
+  groups.forEach(list => {
+    if (list.length < 2) return;
+    list.forEach(o => {
+      const others = list.filter(x => x !== o);
+      flags.set(o.id, { dup: others.filter(x => orderSig(x) === orderSig(o)).map(x => x.reference), others: others.map(x => x.reference) });
+    });
+  });
+  return flags;
+}
+// Duplicadas = mesmo telefone, mesmo dia e mesmos produtos/quantidades. O montante conta só a 1.ª de cada grupo.
+function duplicateSummary() {
+  const flags = orderFlags(), groups = new Map();
+  appState.orders.forEach(o => {
+    if (!flags.get(o.id)?.dup.length) return;
+    const k = phoneKey(o) + '#' + orderDay(o) + '#' + orderSig(o);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(o);
+  });
+  let orders = 0, amount = 0;
+  groups.forEach(g => { g.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); orders += g.length; amount += num(g[0].total); });
+  return { orders, groups: groups.size, amount };
+}
+function dupCard() {
+  const r = duplicateSummary();
+  const html = stat('Possíveis duplicadas', r.orders, r.orders ? `Montante: ${money(r.amount)} · só a 1.ª de cada grupo` : 'Nenhuma encomenda duplicada', '≈');
+  return r.orders ? html.replace('<div class="stat-card">', '<div class="stat-card stat-link" data-goto-dup title="Ver as duplicadas em Encomendas">') : html;
+}
+const flagBadge = f => !f ? '' : f.dup.length
+  ? `<small style="display:block;margin-top:4px"><span class="status inactive" title="Igual a: ${esc(f.dup.join(', '))}">Duplicada</span></small><small class="muted" style="display:block">Igual a ${esc(f.dup.join(', '))}</small>`
+  : `<small style="display:block;margin-top:4px"><span class="status pending" title="Outras: ${esc(f.others.join(', '))}">${f.others.length + 1} encomendas hoje</span></small><small class="muted" style="display:block">Com ${esc(f.others.join(', '))}</small>`;
 const byRecent = (a, b) => new Date(b.createdAt) - new Date(a.createdAt);
 const orderSorters = {
   recent: byRecent,
@@ -152,6 +193,7 @@ function filteredOrders() {
   const hasHours = u.hFrom !== '' || u.hTo !== '';
   const hf = u.hFrom === '' ? 0 : num(u.hFrom), ht = u.hTo === '' ? 23 : num(u.hTo);
   const inHours = h => hf <= ht ? (h >= hf && h <= ht) : (h >= hf || h <= ht);
+  orderFlagMap = orderFlags();
   const qmin = u.qMin === '' ? -Infinity : num(u.qMin), qmax = u.qMax === '' ? Infinity : num(u.qMax);
   return appState.orders.filter(o => {
     const qty = orderQty(o), day = orderDay(o);
@@ -162,6 +204,10 @@ function filteredOrders() {
     if (u.to && day > u.to) return false;
     if (hasHours && !inHours(orderHour(o))) return false;
     if (qty < qmin || qty > qmax) return false;
+    const fl = orderFlagMap.get(o.id);
+    if (u.alert === 'any' && !fl) return false;
+    if (u.alert === 'dup' && !fl?.dup.length) return false;
+    if (u.alert === 'multi' && (!fl || fl.dup.length)) return false;
     return true;
   });
 }
@@ -184,6 +230,7 @@ function orders(d) {
       ${tf('Hora até', `<select id="of-hto">${hourOpts(u.hTo, 'Qualquer', ':59')}</select>`)}
       ${tf('Qtd. mín.', `<input id="of-qmin" type="number" min="0" step="1" placeholder="0" value="${esc(u.qMin)}">`)}
       ${tf('Qtd. máx.', `<input id="of-qmax" type="number" min="0" step="1" placeholder="∞" value="${esc(u.qMax)}">`)}
+      ${tf('Alertas', `<select id="of-alert">${opt('all', 'Todas', u.alert)}${opt('any', 'Só marcadas', u.alert)}${opt('dup', 'Duplicadas', u.alert)}${opt('multi', 'Cliente com 2+ encomendas', u.alert)}</select>`)}
       ${tf('Ordenar por', `<select id="of-sort">${opt('recent', 'Mais recentes', u.sort)}${opt('oldest', 'Mais antigas', u.sort)}${opt('hour', 'Hora do dia (cedo → tarde)', u.sort)}${opt('zone', 'Zona (A–Z)', u.sort)}${opt('qtyDesc', 'Quantidade (maior → menor)', u.sort)}${opt('qtyAsc', 'Quantidade (menor → maior)', u.sort)}${opt('total', 'Total (maior → menor)', u.sort)}</select>`)}
       ${tf('Agrupar por', `<select id="of-group">${opt('none', 'Sem agrupamento', u.group)}${opt('hour', 'Hora', u.group)}${opt('zone', 'Zona', u.group)}${opt('qty', 'Quantidade', u.group)}${opt('day', 'Dia', u.group)}</select>`)}
       <button type="button" class="btn btn-outline" id="of-clear">Limpar filtros</button>
@@ -194,11 +241,11 @@ function orders(d) {
 }
 
 function orderRow(o) {
-  const d = new Date(o.createdAt), pay = orderPayment(o), prov = orderProvince(o);
+  const d = new Date(o.createdAt), pay = orderPayment(o), prov = orderProvince(o), fl = orderFlagMap.get(o.id);
   const digits = String(o.customer?.phone || '').replace(/\D/g, '');
   const wa = digits ? 'https://wa.me/' + (digits.length === 9 ? '244' + digits : digits) : '';
   const phone = digits ? `<a href="tel:${esc(digits)}">${esc(o.customer.phone)}</a> · <a href="${esc(wa)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : '';
-  return `<tr><td><strong>${esc(o.reference)}</strong></td><td>${esc(o.customer?.name || 'Desconhecido')}<small class="muted" style="display:block">${phone}</small></td><td class="wrap-cell"><span class="zone-tag">${esc(orderZone(o))}</span>${prov ? `<small class="muted"> ${esc(prov)}</small>` : ''}<small class="muted" style="display:block;margin-top:4px">${o.referencePoint ? esc(o.referencePoint) : 'Sem ponto de referência'}</small></td><td>${(o.items || []).map(i => esc(i.product_name) + ' × ' + esc(i.quantity)).join('<br>')}</td><td><span class="qty-pill">${orderQty(o)}</span></td><td>${o.deliveryFee != null ? money(o.deliveryFee) : '—'}</td><td><strong>${money(o.total)}</strong></td><td><span class="status ${pay.cls}">${pay.label}</span>${pay.paid ? `<small class="muted" style="display:block;margin-top:3px">${money(pay.paid)}</small>` : ''}</td><td class="wrap-cell">${o.notes ? esc(o.notes) : '<span class="muted">—</span>'}</td><td><strong>${pad2(d.getHours())}:${pad2(d.getMinutes())}</strong><small class="muted" style="display:block">${d.toLocaleDateString('pt-AO')}</small></td><td><span class="status ${statusClass(o.status)}">${esc(o.status)}</span></td><td><button class="action-btn" data-action="order-detail" data-id="${o.id}">Detalhes</button><button class="action-btn" data-action="next-status" data-id="${o.id}">Avançar</button></td></tr>`;
+  return `<tr class="${fl ? (fl.dup.length ? 'flagged-dup' : 'flagged-multi') : ''}"><td><strong>${esc(o.reference)}</strong>${flagBadge(fl)}</td><td>${esc(o.customer?.name || 'Desconhecido')}<small class="muted" style="display:block">${phone}</small></td><td class="wrap-cell"><span class="zone-tag">${esc(orderZone(o))}</span>${prov ? `<small class="muted"> ${esc(prov)}</small>` : ''}<small class="muted" style="display:block;margin-top:4px">${o.referencePoint ? esc(o.referencePoint) : 'Sem ponto de referência'}</small></td><td>${(o.items || []).map(i => esc(i.product_name) + ' × ' + esc(i.quantity)).join('<br>')}</td><td><span class="qty-pill">${orderQty(o)}</span></td><td>${o.deliveryFee != null ? money(o.deliveryFee) : '—'}</td><td><strong>${money(o.total)}</strong></td><td><span class="status ${pay.cls}">${pay.label}</span>${pay.paid ? `<small class="muted" style="display:block;margin-top:3px">${money(pay.paid)}</small>` : ''}</td><td class="wrap-cell">${o.notes ? esc(o.notes) : '<span class="muted">—</span>'}</td><td><strong>${pad2(d.getHours())}:${pad2(d.getMinutes())}</strong><small class="muted" style="display:block">${d.toLocaleDateString('pt-AO')}</small></td><td><span class="status ${statusClass(o.status)}">${esc(o.status)}</span></td><td>${waPhone(o) ? `<a class="action-btn wa-btn" href="${esc(waLink(o, waMessage(o)))}" target="_blank" rel="noopener noreferrer" title="Mensagem pronta para o estado: ${esc(o.status)}">WhatsApp</a>` : ''}<button class="action-btn" data-action="order-detail" data-id="${o.id}">Detalhes</button><button class="action-btn" data-action="next-status" data-id="${o.id}">Avançar</button></td></tr>`;
 }
 
 function ordersStats(list) {
@@ -217,7 +264,7 @@ function refreshOrders() {
   const body = $('#orders-body'); if (!body) return;
   const list = filteredOrders().sort(orderSorters[orderUI.sort] || byRecent);
   $('#orders-stats').innerHTML = ordersStats(list);
-  $('#orders-count').textContent = `${list.length} de ${appState.orders.length} encomenda(s)`;
+  $('#orders-count').textContent = `${list.length} de ${appState.orders.length} encomenda(s)` + (orderFlagMap.size ? ` · ${orderFlagMap.size} marcada(s)` : '');
   const g = orderGroupers[orderUI.group];
   let html;
   if (!list.length) html = `<tr><td colspan="12" class="empty-state">${appState.orders.length ? 'Nenhuma encomenda corresponde aos filtros.' : 'Ainda não existem encomendas.'}</td></tr>`;
@@ -235,7 +282,7 @@ function refreshOrders() {
 }
 
 function bindOrderFilters() {
-  const map = { 'of-q': 'q', 'of-status': 'status', 'of-zone': 'zone', 'of-from': 'from', 'of-to': 'to', 'of-hfrom': 'hFrom', 'of-hto': 'hTo', 'of-qmin': 'qMin', 'of-qmax': 'qMax', 'of-sort': 'sort', 'of-group': 'group' };
+  const map = { 'of-q': 'q', 'of-status': 'status', 'of-zone': 'zone', 'of-from': 'from', 'of-to': 'to', 'of-hfrom': 'hFrom', 'of-hto': 'hTo', 'of-qmin': 'qMin', 'of-qmax': 'qMax', 'of-sort': 'sort', 'of-group': 'group', 'of-alert': 'alert' };
   Object.entries(map).forEach(([id, k]) => { const el = $('#' + id); if (el) el.addEventListener('input', () => { orderUI[k] = el.value; refreshOrders(); }); });
   $('#of-clear')?.addEventListener('click', () => { Object.assign(orderUI, orderDefaults); render(); });
   refreshOrders();
@@ -309,6 +356,142 @@ function formModal(eyebrow, title, fields, onSubmit, label = 'Guardar') {
 }
 const fld = (label, name, type = 'text', val = '', extra = '') => `<label class="field">${label}<input name="${name}" type="${type}" value="${esc(val)}" ${extra}></label>`;
 
+// ===== WhatsApp e Clientes =====
+const SHOP_NAME = 'BRANQUEX';
+const waPhone = o => { const d = String(o.customer?.phone || '').replace(/\D/g, ''); return !d ? '' : (d.length === 9 ? '244' + d : d); };
+const waLink = (o, text) => 'https://wa.me/' + waPhone(o) + (text ? '?text=' + encodeURIComponent(text) : '');
+
+// Mensagem pronta consoante o estado da encomenda (nome, referência, total e hora do pedido).
+function waMessage(o, status = o.status) {
+  const d = new Date(o.createdAt), when = `${d.toLocaleDateString('pt-AO')} às ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const nome = String(o.customer?.name || '').trim().split(/\s+/)[0] || 'cliente';
+  const itens = (o.items || []).map(i => `${i.quantity}× ${i.product_name}`).join(', ');
+  const local = [o.municipality_id ? orderZone(o) : '', o.referencePoint].filter(Boolean).join(' · ');
+  const due = Math.max(0, num(o.total) - orderPaid(o));
+  const base = `Olá, ${nome}! `, ref = `*${o.reference}*`;
+  const m = {
+    'Aguardando confirmação': `${base}Recebemos a sua encomenda ${ref} (${itens}), feita a ${when}, no valor de ${money(o.total)}. Estamos a confirmá-la e entramos em contacto consigo em breve.`,
+    'Confirmada': `${base}A sua encomenda ${ref} está confirmada.\nPedido feito a ${when}.\nProdutos: ${itens}\nTotal: ${money(o.total)}${local ? '\nEntrega: ' + local : ''}\nVamos combinar consigo o melhor horário de entrega.`,
+    'Em preparação': `${base}A sua encomenda ${ref} está a ser preparada. Avisamos assim que sair para entrega.`,
+    'Em distribuição': `${base}A sua encomenda ${ref} já saiu para entrega${local ? ' (' + local + ')' : ''} e está a caminho.${due > 0 ? '\nValor por pagar: ' + money(due) + '.' : ''}\nPor favor, mantenha o telemóvel por perto.`,
+    'Entregue': `${base}Confirmamos a entrega da sua encomenda ${ref}. Obrigado pela preferência! Se precisar de alguma coisa, é só responder a esta mensagem.`,
+    'Levantada': `${base}Confirmamos o levantamento da sua encomenda ${ref}. Obrigado pela preferência!`,
+    'Cancelada': `${base}A sua encomenda ${ref} (${when}) foi cancelada. Se quiser refazer o pedido ou tiver alguma dúvida, é só responder a esta mensagem.`
+  };
+  return (m[status] || m[o.status] || m['Aguardando confirmação']) + `\n\n— ${SHOP_NAME}`;
+}
+
+function waBox(o) {
+  if (!waPhone(o)) return `<div class="wa-box"><small class="muted">Esta encomenda não tem número de telefone para enviar mensagem por WhatsApp.</small></div>`;
+  return `<div class="wa-box"><label class="field">Mensagem por WhatsApp<select id="wa-template">${statuses.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}</select></label><label class="field"><textarea id="wa-text" rows="7"></textarea></label><a class="btn btn-primary wa-open" id="wa-open" target="_blank" rel="noopener noreferrer">Abrir no WhatsApp</a></div>`;
+}
+function bindWaBox(o) {
+  const sel = $('#wa-template'), txt = $('#wa-text'), a = $('#wa-open');
+  if (!sel || !txt || !a) return;
+  const sync = () => { a.href = waLink(o, txt.value); };
+  sel.addEventListener('input', () => { txt.value = waMessage(o, sel.value); sync(); });
+  txt.addEventListener('input', sync);
+  txt.value = waMessage(o, sel.value); sync();
+}
+
+// ----- Clientes -----
+const CUSTOMER_FREQUENT_MIN = 3;                      // encomendas válidas para ser "Frequente"
+const CUSTOMER_CANCEL_MIN = 2, CUSTOMER_CANCEL_RATE = 0.4; // "Cancela muito": 2+ canceladas e 40%+ do total
+const customerDefaults = { q: '', tag: 'all', sort: 'orders' };
+const customerUI = { ...customerDefaults };
+const sumBy = (list, fn) => list.reduce((a, x) => a + fn(x), 0);
+const daysSince = iso => { const a = new Date(), b = new Date(iso); return Math.round((new Date(a.getFullYear(), a.getMonth(), a.getDate()) - new Date(b.getFullYear(), b.getMonth(), b.getDate())) / 86400000); };
+const agoLabel = n => n <= 0 ? 'hoje' : n === 1 ? 'ontem' : `há ${n} dias`;
+const tagInfo = { frequent: ['active', 'Frequente'], new: ['distribution', 'Novo'], cancel: ['out', 'Cancela muito'] };
+const customerSorters = {
+  orders: (a, b) => b.valid - a.valid || new Date(b.last) - new Date(a.last),
+  spent: (a, b) => b.spent - a.spent,
+  last: (a, b) => new Date(b.last) - new Date(a.last),
+  name: (a, b) => a.name.localeCompare(b.name, 'pt'),
+  cancelled: (a, b) => b.cancelled - a.cancelled || b.total - a.total
+};
+
+// Junta as encomendas por cliente (telefone; os últimos 9 dígitos são o identificador).
+function buildCustomers() {
+  const map = new Map();
+  appState.orders.forEach(o => {
+    const key = phoneKey(o) || o.customer_id || o.customer?.id || o.id;
+    if (!map.has(key)) map.set(key, { key, orders: [] });
+    map.get(key).orders.push(o);
+  });
+  return [...map.values()].map(c => {
+    c.orders.sort(byRecent);
+    const last = c.orders[0], live = c.orders.filter(o => o.status !== 'Cancelada');
+    c.name = last.customer?.name || 'Desconhecido';
+    c.phone = last.customer?.phone || '';
+    c.wa = waPhone(last);
+    c.total = c.orders.length; c.valid = live.length; c.cancelled = c.total - c.valid;
+    c.spent = sumBy(live, o => num(o.total)); c.units = sumBy(live, orderQty);
+    c.avg = c.valid ? c.spent / c.valid : 0;
+    c.due = sumBy(live, o => Math.max(0, num(o.total) - orderPaid(o)));
+    c.first = c.orders[c.total - 1].createdAt; c.last = last.createdAt;
+    const zc = {}; (live.length ? live : c.orders).forEach(o => { const z = orderZone(o); zc[z] = (zc[z] || 0) + 1; });
+    c.zone = Object.entries(zc).sort((a, b) => b[1] - a[1])[0][0];
+    c.tags = [];
+    if (c.valid >= CUSTOMER_FREQUENT_MIN) c.tags.push('frequent');
+    if (c.total === 1) c.tags.push('new');
+    if (c.cancelled >= CUSTOMER_CANCEL_MIN && c.cancelled / c.total >= CUSTOMER_CANCEL_RATE) c.tags.push('cancel');
+    return c;
+  });
+}
+const tagBadges = c => c.tags.map(t => `<span class="status ${tagInfo[t][0]}">${tagInfo[t][1]}</span>`).join(' ') || '<span class="muted">—</span>';
+const phoneLinks = c => c.wa ? `<a href="tel:${esc(c.wa)}">${esc(c.phone)}</a> · <a href="https://wa.me/${esc(c.wa)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : esc(c.phone);
+
+function customers() {
+  const u = customerUI;
+  const tf = (label, control) => `<label class="tf">${label}${control}</label>`;
+  return `${pageHead('Clientes', 'Histórico de encomendas e reconhecimento de clientes frequentes.')}
+  <div id="cust-stats" class="stats-grid"></div>
+  <section class="table-panel">
+    <div class="table-toolbar order-filters">
+      ${tf('Pesquisar', `<input id="cf-q" placeholder="Nome, telefone ou zona..." value="${esc(u.q)}">`)}
+      ${tf('Etiqueta', `<select id="cf-tag">${opt('all', 'Todos os clientes', u.tag)}${opt('frequent', 'Frequentes', u.tag)}${opt('new', 'Novos (1 encomenda)', u.tag)}${opt('cancel', 'Cancelam muito', u.tag)}</select>`)}
+      ${tf('Ordenar por', `<select id="cf-sort">${opt('orders', 'Mais encomendas', u.sort)}${opt('spent', 'Maior valor gasto', u.sort)}${opt('last', 'Última encomenda', u.sort)}${opt('cancelled', 'Mais canceladas', u.sort)}${opt('name', 'Nome (A–Z)', u.sort)}</select>`)}
+      <button type="button" class="btn btn-outline" id="cf-clear">Limpar filtros</button>
+      <span class="toolbar-spacer"></span><small class="muted" id="cust-count"></small>
+    </div>
+    <div class="table-wrap"><table class="orders-table customers-table"><thead><tr><th>CLIENTE</th><th>ZONA PRINCIPAL</th><th>ENCOMENDAS</th><th>TOTAL GASTO</th><th>TICKET MÉDIO</th><th>ÚLTIMA ENCOMENDA</th><th>ETIQUETAS</th><th>AÇÕES</th></tr></thead><tbody id="cust-body"></tbody></table></div>
+  </section>`;
+}
+
+function refreshCustomers() {
+  const body = $('#cust-body'); if (!body) return;
+  const all = buildCustomers(), u = customerUI, q = u.q.trim().toLowerCase();
+  const list = all.filter(c => (!q || [c.name, c.phone, c.zone].join(' ').toLowerCase().includes(q)) && (u.tag === 'all' || c.tags.includes(u.tag))).sort(customerSorters[u.sort] || customerSorters.orders);
+  const repeat = all.filter(c => c.valid >= 2).length;
+  $('#cust-stats').innerHTML = stat('Clientes', all.length, 'Com pelo menos 1 encomenda', '☺')
+    + stat('Frequentes', all.filter(c => c.tags.includes('frequent')).length, `${CUSTOMER_FREQUENT_MIN}+ encomendas válidas`, '★')
+    + stat('Voltam a comprar', all.length ? Math.round(repeat / all.length * 100) + '%' : '—', `${repeat} com 2+ encomendas`, '↻')
+    + stat('Cancelam muito', all.filter(c => c.tags.includes('cancel')).length, `${CUSTOMER_CANCEL_MIN}+ canceladas e ${Math.round(CUSTOMER_CANCEL_RATE * 100)}%+ do total`, '!');
+  $('#cust-count').textContent = `${list.length} de ${all.length} cliente(s)`;
+  body.innerHTML = list.length ? list.map(c => `<tr><td><strong>${esc(c.name)}</strong><small class="muted" style="display:block">${phoneLinks(c)}</small></td><td><span class="zone-tag">${esc(c.zone)}</span></td><td><span class="qty-pill">${c.valid}</span>${c.cancelled ? `<small class="muted"> + ${c.cancelled} cancelada(s)</small>` : ''}</td><td><strong>${money(c.spent)}</strong>${c.due ? `<small class="muted" style="display:block">Por pagar: ${money(c.due)}</small>` : ''}</td><td>${money(c.avg)}</td><td><strong>${new Date(c.last).toLocaleDateString('pt-AO')}</strong><small class="muted" style="display:block">${agoLabel(daysSince(c.last))}</small></td><td>${tagBadges(c)}</td><td><button class="action-btn" data-cust="${esc(c.key)}">Ficha</button></td></tr>`).join('')
+    : `<tr><td colspan="8" class="empty-state">${all.length ? 'Nenhum cliente corresponde aos filtros.' : 'Ainda não existem clientes.'}</td></tr>`;
+  body.querySelectorAll('[data-cust]').forEach(b => b.addEventListener('click', () => customerDetail(b.dataset.cust)));
+}
+
+function bindCustomerFilters() {
+  const map = { 'cf-q': 'q', 'cf-tag': 'tag', 'cf-sort': 'sort' };
+  Object.entries(map).forEach(([id, k]) => { const el = $('#' + id); if (el) el.addEventListener('input', () => { customerUI[k] = el.value; refreshCustomers(); }); });
+  $('#cf-clear')?.addEventListener('click', () => { Object.assign(customerUI, customerDefaults); render(); });
+  refreshCustomers();
+}
+
+function customerDetail(key) {
+  const c = buildCustomers().find(x => String(x.key) === String(key)); if (!c) return;
+  const cell = (l, v, wide) => `<div class="detail-item${wide ? ' detail-wide' : ''}"><small>${l}</small><strong>${v || '—'}</strong></div>`;
+  const rate = c.total ? Math.round(c.cancelled / c.total * 100) : 0;
+  const history = c.orders.map(o => { const d = new Date(o.createdAt); return `<div class="list-row"><div><strong>${esc(o.reference)}</strong><small>${d.toLocaleDateString('pt-AO')} · ${pad2(d.getHours())}:${pad2(d.getMinutes())} · ${esc(orderZone(o))}</small><small>${(o.items || []).map(i => esc(i.product_name) + ' × ' + esc(i.quantity)).join(', ')}</small></div><div style="text-align:right"><strong>${money(o.total)}</strong><span class="status ${statusClass(o.status)}" style="display:block;margin:3px 0">${esc(o.status)}</span><button class="action-btn" data-order="${o.id}">Ver</button></div></div>`; }).join('');
+  openModal(`<div class="eyebrow">FICHA DO CLIENTE</div><h2>${esc(c.name)}</h2><p style="margin:-4px 0 14px">${tagBadges(c)}</p><div class="detail-grid">${cell('TELEFONE', phoneLinks(c))}${cell('ZONA PRINCIPAL', esc(c.zone))}${cell('ENCOMENDAS VÁLIDAS', c.valid)}${cell('CANCELADAS', `${c.cancelled} (${rate}%)`)}${cell('TOTAL GASTO', money(c.spent))}${cell('TICKET MÉDIO', money(c.avg))}${cell('UNIDADES COMPRADAS', c.units)}${cell('POR PAGAR', money(c.due))}${cell('PRIMEIRA ENCOMENDA', esc(new Date(c.first).toLocaleDateString('pt-AO')))}${cell('ÚLTIMA ENCOMENDA', esc(new Date(c.last).toLocaleDateString('pt-AO')) + ' · ' + agoLabel(daysSince(c.last)))}${cell('HISTÓRICO DE ENCOMENDAS (' + c.total + ')', `<div class="simple-list cust-history">${history}</div>`, true)}</div><div class="modal-actions"><button class="btn btn-outline" data-close-modal>Fechar</button></div>`);
+  $('#modal-content').querySelector('[data-close-modal]').onclick = () => $('#app-modal').close();
+  $('#modal-content').querySelectorAll('[data-order]').forEach(b => b.addEventListener('click', () => orderDetail(b.dataset.order)));
+}
+// ===== fim WhatsApp e Clientes =====
+
 function orderDetail(id) {
   const o = appState.orders.find(x => x.id === id); if (!o) return;
   const mun = appState.municipalities.find(x => x.id === o.municipality_id);
@@ -316,8 +499,9 @@ function orderDetail(id) {
   const wa = digits ? 'https://wa.me/' + (digits.length === 9 ? '244' + digits : digits) : '';
   const cell = (l, v, wide) => `<div class="detail-item${wide ? ' detail-wide' : ''}"><small>${l}</small><strong>${v || '—'}</strong></div>`;
   const items = (o.items || []).map(i => `<li>${esc(i.product_name)} × ${esc(i.quantity)}</li>`).join('');
-  openModal(`<div class="eyebrow">DETALHES DA ENCOMENDA</div><h2>${esc(o.reference)}</h2><div class="detail-grid">${cell('CLIENTE', esc(o.customer?.name))}${cell('TELEFONE', digits ? `<a href="tel:${esc(digits)}">${esc(o.customer.phone)}</a> · <a href="${esc(wa)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : '')}${cell('MUNICÍPIO', mun ? esc(mun.name + ' — ' + mun.province) : '')}${cell('DATA', esc(new Date(o.createdAt).toLocaleString('pt-AO')))}${cell('REFERÊNCIA DO LOCAL', esc(o.referencePoint), true)}${cell('OBSERVAÇÕES', esc(o.notes), true)}${cell('PRODUTOS', items ? `<ul class="detail-list">${items}</ul>` : '', true)}${cell('TAXA DE ENTREGA', o.deliveryFee != null ? money(o.deliveryFee) : '')}${cell('TOTAL', money(o.total))}${cell('ESTADO', `<span class="status ${statusClass(o.status)}">${esc(o.status)}</span>`)}${cell('PAGAMENTO', `${orderPayment(o).label}${orderPayment(o).paid ? ' · ' + money(orderPayment(o).paid) : ''}`)}</div><div class="modal-actions"><button class="btn btn-outline" data-close-modal>Fechar</button><label class="field">Alterar estado<select id="modal-order-status">${statuses.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}</select></label><button class="btn btn-primary" id="btn-save-order-status">Guardar estado</button></div>`);
+  openModal(`<div class="eyebrow">DETALHES DA ENCOMENDA</div><h2>${esc(o.reference)}</h2><div class="detail-grid">${cell('CLIENTE', esc(o.customer?.name))}${cell('TELEFONE', digits ? `<a href="tel:${esc(digits)}">${esc(o.customer.phone)}</a> · <a href="${esc(wa)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : '')}${cell('MUNICÍPIO', mun ? esc(mun.name + ' — ' + mun.province) : '')}${cell('DATA', esc(new Date(o.createdAt).toLocaleString('pt-AO')))}${cell('REFERÊNCIA DO LOCAL', esc(o.referencePoint), true)}${cell('OBSERVAÇÕES', esc(o.notes), true)}${cell('PRODUTOS', items ? `<ul class="detail-list">${items}</ul>` : '', true)}${cell('TAXA DE ENTREGA', o.deliveryFee != null ? money(o.deliveryFee) : '')}${cell('TOTAL', money(o.total))}${cell('ESTADO', `<span class="status ${statusClass(o.status)}">${esc(o.status)}</span>`)}${cell('PAGAMENTO', `${orderPayment(o).label}${orderPayment(o).paid ? ' · ' + money(orderPayment(o).paid) : ''}`)}${(() => { const f = orderFlags().get(o.id); return f ? cell('ALERTA', f.dup.length ? 'Duplicada · igual a ' + esc(f.dup.join(', ')) : f.others.length + 1 + ' encomendas do mesmo cliente hoje · ' + esc(f.others.join(', '))) : ''; })()}</div>${waBox(o)}<div class="modal-actions"><button class="btn btn-outline" data-close-modal>Fechar</button><label class="field">Alterar estado<select id="modal-order-status">${statuses.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}</select></label><button class="btn btn-primary" id="btn-save-order-status">Guardar estado</button></div>`);
   $('#modal-content').querySelector('[data-close-modal]').onclick = () => $('#app-modal').close();
+  bindWaBox(o);
   $('#btn-save-order-status').onclick = async ev => {
     const btn = ev.currentTarget, status = $('#modal-order-status').value; btn.disabled = true;
     try {
@@ -405,6 +589,8 @@ function bindView() {
   const root = $('#view-root');
   bindActions(root);
   if (current === 'orders') bindOrderFilters();
+  if (current === 'customers') bindCustomerFilters();
+  $('[data-goto-dup]')?.addEventListener('click', () => { Object.assign(orderUI, orderDefaults, { alert: 'dup' }); current = 'orders'; $('#side-nav').querySelectorAll('button').forEach(x => x.classList.toggle('active', x.dataset.view === 'orders')); render(); });
   ['#product-search', '#product-filter', '#stock-search'].forEach(s => $(s)?.addEventListener('input', applyFilters));
   const sf = $('#settings-form');
   if (sf) sf.addEventListener('submit', async e => {

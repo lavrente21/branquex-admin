@@ -50,3 +50,17 @@ th{white-space:nowrap}
 @media(max-width:700px){.order-filters .tf{flex:1 1 130px}.order-filters .tf input,.order-filters .tf select{width:100%!important}}
 .orders-table td.wrap-cell{white-space:normal;min-width:190px;max-width:260px;line-height:1.45}
 .bar-col>small:first-child{font-size:8px;font-weight:800;color:var(--purple);min-height:10px}
+.orders-table tr.flagged-dup td{background:#fff3f3}
+.orders-table tr.flagged-multi td{background:#fffaeb}
+a.action-btn,a.btn{text-decoration:none;display:inline-flex;align-items:center}
+.action-btn.wa-btn{background:#eaf8f0;color:#218255}
+.wa-box{margin:16px 0 4px;padding:14px 14px 12px;border:1px solid var(--line);border-radius:10px;background:#faf8fd}
+.wa-box .field{margin-bottom:10px}
+.wa-box textarea{min-height:130px;resize:vertical;line-height:1.45}
+.table-wrap table.customers-table{min-width:980px}
+.cust-history{max-height:260px;overflow:auto;margin-top:6px}
+.cust-history .list-row small{display:block}
+.stat-card.stat-link{cursor:pointer;border-color:#f5d6da;background:#fffafa}
+.stat-card.stat-link:hover{border-color:#e9a9b1}
+.stat-card.stat-link .stat-icon{background:#fff0f1;color:#b83c4b}
+
