@@ -63,4 +63,8 @@ a.action-btn,a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .stat-card.stat-link{cursor:pointer;border-color:#f5d6da;background:#fffafa}
 .stat-card.stat-link:hover{border-color:#e9a9b1}
 .stat-card.stat-link .stat-icon{background:#fff0f1;color:#b83c4b}
+.fin-scroll{max-height:440px;overflow:auto}
+.table-wrap table.finance-table{min-width:760px}
+.finance-table thead th{position:sticky;top:0;z-index:1}
+.finance-table tfoot td{font-weight:800;background:#f6f1fd;color:#4b2a87;border-top:2px solid var(--line);position:sticky;bottom:0}
 
