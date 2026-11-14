@@ -302,7 +302,7 @@ function financeOrders() {
 // ===== fim Finanças =====
 
 function finance(d) { const received = d.payments.reduce((a, p) => a + num(p.amount), 0), sales = d.orders.filter(o => o.status !== 'Cancelada').reduce((a, o) => a + num(o.total), 0), expenses = d.expenses.reduce((a, x) => a + num(x.amount), 0), fees = d.orders.filter(o => o.status !== 'Cancelada').reduce((a, o) => a + num(o.deliveryFee), 0); const refOf = id => d.orders.find(o => o.id === id)?.reference || 'Pagamento'; const acts = '<div class="head-actions"><button class="btn btn-outline" data-action="add-payment">＋ Registar pagamento</button><button class="btn btn-primary" data-action="add-expense">＋ Registar despesa</button></div>'; return `${pageHead('Gestão financeira', 'Registe pagamentos e despesas.', acts)}<div class="stats-grid">${stat('Produtos', money(sales - fees), 'Vendas sem entrega', '◇')}${stat('Entrega', money(fees), 'Taxas de entrega', '⌁')}${stat('Total faturado', money(sales), 'Produtos + entrega · encomendas válidas', '◫')}${stat('Valores recebidos', money(received), 'Pagamentos efetuados', '✓')}${stat('Despesas', money(expenses), 'Despesas operacionais', '−')}${stat('Saldo', money(received - expenses), 'Recebido − despesas', '＝')}</div><div class="dashboard-grid"><section class="panel"><h3>Pagamentos recentes</h3><div class="simple-list">${d.payments.slice(0, 8).map(p => `<div class="list-row"><div><strong>${esc(refOf(p.order_id))}</strong><small>${esc(p.method || '')}</small></div><strong>${money(p.amount)}</strong></div>`).join('') || '<div class="empty-state">Sem pagamentos.</div>'}</div></section><section class="panel"><h3>Despesas recentes</h3><div class="simple-list">${d.expenses.slice(0, 8).map(x => `<div class="list-row"><div><strong>${esc(x.description || 'Despesa')}</strong><small>${new Date(x.created_at).toLocaleDateString('pt-AO')}</small></div><strong>${money(x.amount)}</strong></div>`).join('') || '<div class="empty-state">Sem despesas.</div>'}</div></section></div>${financeOrders()}`; }
-function settings(d) { return `${pageHead('Configurações', 'Atualize os dados comerciais da loja.')}<form id="settings-form" class="setting-card"><h3>Informações da loja</h3><div class="setting-row"><label class="field">Nome da loja<input name="store_name" value="${esc(d.settings.store_name || 'BRANQUEX')}" required></label><label class="field">Telefone<input name="phone" value="${esc(d.settings.phone || '')}"></label><label class="field">Email<input name="email" type="email" value="${esc(d.settings.email || '')}"></label><label class="field">Localização<input name="location" value="${esc(d.settings.location || 'Angola')}"></label></div><button class="btn btn-primary">Guardar configurações</button></form>`; }
+function settings(d) { return `${pageHead('Configurações', 'Atualize os dados comerciais da loja.')}<form id="settings-form" class="setting-card"><h3>Informações da loja</h3><div class="setting-row"><label class="field">Nome da loja<input name="store_name" value="${esc(d.settings.store_name || 'BRANQUEX')}" required></label><label class="field">Telefone<input name="phone" value="${esc(d.settings.phone || '')}"></label><label class="field">Email<input name="email" type="email" value="${esc(d.settings.email || '')}"></label><label class="field">Localização<input name="location" value="${esc(d.settings.location || 'Angola')}"></label></div><button class="btn btn-primary">Guardar configurações</button></form>${waSettingsCard(d)}`; }
 
 function openModal(html) { $('#modal-content').innerHTML = html; $('#app-modal').showModal(); }
 $('.modal-close').addEventListener('click', () => $('#app-modal').close());
@@ -372,24 +372,55 @@ const SHOP_NAME = 'BRANQUEX';
 const waPhone = o => { const d = String(o.customer?.phone || '').replace(/\D/g, ''); return !d ? '' : (d.length === 9 ? '244' + d : d); };
 const waLink = (o, text) => 'https://wa.me/' + waPhone(o) + (text ? '?text=' + encodeURIComponent(text) : '');
 
-// Mensagem pronta consoante o estado da encomenda (nome, referência, total e hora do pedido).
-function waMessage(o, status = o.status) {
-  const d = new Date(o.createdAt), when = `${d.toLocaleDateString('pt-AO')} às ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-  const nome = String(o.customer?.name || '').trim().split(/\s+/)[0] || 'cliente';
-  const itens = (o.items || []).map(i => `${i.quantity}× ${i.product_name}`).join(', ');
-  const local = [o.municipality_id ? orderZone(o) : '', o.referencePoint].filter(Boolean).join(' · ');
-  const due = Math.max(0, num(o.total) - orderPaid(o));
-  const base = `Olá, ${nome}! `, ref = `*${o.reference}*`;
-  const m = {
-    'Aguardando confirmação': `${base}Recebemos a sua encomenda ${ref} (${itens}), feita a ${when}, no valor de ${money(o.total)}. Estamos a confirmá-la e entramos em contacto consigo em breve.`,
-    'Confirmada': `${base}A sua encomenda ${ref} está confirmada.\nPedido feito a ${when}.\nProdutos: ${itens}\nTotal: ${money(o.total)}${local ? '\nEntrega: ' + local : ''}\nVamos combinar consigo o melhor horário de entrega.`,
-    'Em preparação': `${base}A sua encomenda ${ref} está a ser preparada. Avisamos assim que sair para entrega.`,
-    'Em distribuição': `${base}A sua encomenda ${ref} já saiu para entrega${local ? ' (' + local + ')' : ''} e está a caminho.${due > 0 ? '\nValor por pagar: ' + money(due) + '.' : ''}\nPor favor, mantenha o telemóvel por perto.`,
-    'Entregue': `${base}Confirmamos a entrega da sua encomenda ${ref}. Obrigado pela preferência! Se precisar de alguma coisa, é só responder a esta mensagem.`,
-    'Levantada': `${base}Confirmamos o levantamento da sua encomenda ${ref}. Obrigado pela preferência!`,
-    'Cancelada': `${base}A sua encomenda ${ref} (${when}) foi cancelada. Se quiser refazer o pedido ou tiver alguma dúvida, é só responder a esta mensagem.`
+// ----- Modelos de mensagem (editáveis em Configurações) -----
+const WA_BULK = 'Mensagem em massa';
+const WA_DEFAULTS = {
+  'Aguardando confirmação': 'Olá, {nome}! Recebemos a sua encomenda *{referencia}* ({produtos}), feita a {data} às {hora}, no valor de {total}. Estamos a confirmá-la e entramos em contacto consigo em breve.\n\n— {loja}',
+  'Confirmada': 'Olá, {nome}! A sua encomenda *{referencia}* está confirmada.\nPedido feito a {data} às {hora}.\nProdutos: {produtos}\nTotal: {total}\nEntrega: {local}\nVamos combinar consigo o melhor horário de entrega.\n\n— {loja}',
+  'Em preparação': 'Olá, {nome}! A sua encomenda *{referencia}* está a ser preparada. Avisamos assim que sair para entrega.\n\n— {loja}',
+  'Em distribuição': 'Olá, {nome}! A sua encomenda *{referencia}* já saiu para entrega e está a caminho.\nLocal: {local}\nValor por pagar: {valor_em_falta}\nPor favor, mantenha o telemóvel por perto.\n\n— {loja}',
+  'Entregue': 'Olá, {nome}! Confirmamos a entrega da sua encomenda *{referencia}*. Obrigado pela preferência! Se precisar de alguma coisa, é só responder a esta mensagem.\n\n— {loja}',
+  'Levantada': 'Olá, {nome}! Confirmamos o levantamento da sua encomenda *{referencia}*. Obrigado pela preferência!\n\n— {loja}',
+  'Cancelada': 'Olá, {nome}! A sua encomenda *{referencia}* ({data} às {hora}) foi cancelada. Se quiser refazer o pedido ou tiver alguma dúvida, é só responder a esta mensagem.\n\n— {loja}',
+  [WA_BULK]: 'Olá, {nome}! Temos novidades da {loja} para clientes de {zona}. Responda a esta mensagem para fazer o seu pedido.\n\n— {loja}'
+};
+const WA_VARS = [['nome', 'Primeiro nome do cliente'], ['nome_completo', 'Nome completo'], ['referencia', 'Referência da encomenda'], ['produtos', 'Produtos e quantidades'], ['total', 'Total da encomenda'], ['data', 'Data do pedido'], ['hora', 'Hora do pedido'], ['local', 'Zona e ponto de referência'], ['zona', 'Zona / município'], ['valor_em_falta', 'Valor por pagar (vazio se já pago)'], ['loja', 'Nome da loja']];
+const BULK_VARS = ['nome', 'nome_completo', 'zona', 'loja'];
+const shopName = () => appState.settings?.store_name || SHOP_NAME;
+const firstName = n => String(n || '').trim().split(/\s+/)[0] || 'cliente';
+
+function waTemplates() {
+  const out = { ...WA_DEFAULTS }, saved = appState.settings?.whatsapp_templates;
+  if (saved && typeof saved === 'object') Object.keys(WA_DEFAULTS).forEach(k => { if (typeof saved[k] === 'string' && saved[k].trim()) out[k] = saved[k]; });
+  return out;
+}
+// Troca {variáveis}. Uma linha com uma variável vazia (ex.: sem valor por pagar) é omitida.
+function waFill(tpl, vars) {
+  return String(tpl).replace(/\r/g, '').split('\n').map(line => {
+    let drop = false;
+    const out = line.replace(/\{(\w+)\}/g, (m, k) => { if (!(k in vars)) return m; const v = vars[k]; if (v === '' || v == null) drop = true; return v; });
+    return drop ? null : out;
+  }).filter(l => l !== null).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+function waVars(o) {
+  const d = new Date(o.createdAt), due = Math.max(0, num(o.total) - orderPaid(o));
+  return {
+    nome: firstName(o.customer?.name), nome_completo: String(o.customer?.name || '').trim(), referencia: o.reference,
+    produtos: (o.items || []).map(i => `${i.quantity}× ${i.product_name}`).join(', '), total: money(o.total),
+    data: d.toLocaleDateString('pt-AO'), hora: `${pad2(d.getHours())}:${pad2(d.getMinutes())}`,
+    local: [o.municipality_id ? orderZone(o) : '', o.referencePoint].filter(Boolean).join(' · '),
+    zona: o.municipality_id ? orderZone(o) : '', valor_em_falta: due > 0 ? money(due) : '', loja: shopName()
   };
-  return (m[status] || m[o.status] || m['Aguardando confirmação']) + `\n\n— ${SHOP_NAME}`;
+}
+// Avisa de variáveis que não existem (ou que não se aplicam) para não seguirem em bruto para o cliente.
+const waWarn = (text, allowed) => {
+  const bad = [...new Set([...String(text).matchAll(/\{(\w+)\}/g)].map(m => m[1]).filter(k => !allowed.includes(k)))];
+  return bad.length ? `<div class="wa-warn" style="margin:8px 0 0">Variável não reconhecida: ${bad.map(k => esc('{' + k + '}')).join(', ')}. Será enviada tal como está escrita.</div>` : '';
+};
+const waCustomerVars = c => ({ nome: firstName(c.name), nome_completo: String(c.name || '').trim(), zona: c.zone || '', loja: shopName() });
+function waMessage(o, status = o.status) {
+  const t = waTemplates();
+  return waFill(t[status] || t['Aguardando confirmação'], waVars(o));
 }
 
 function waBox(o) {
@@ -408,7 +439,7 @@ function bindWaBox(o) {
 // ----- Clientes -----
 const CUSTOMER_FREQUENT_MIN = 3;                      // encomendas válidas para ser "Frequente"
 const CUSTOMER_CANCEL_MIN = 2, CUSTOMER_CANCEL_RATE = 0.4; // "Cancela muito": 2+ canceladas e 40%+ do total
-const customerDefaults = { q: '', tag: 'all', sort: 'orders' };
+const customerDefaults = { q: '', tag: 'all', zone: 'all', sort: 'orders' };
 const customerUI = { ...customerDefaults };
 const sumBy = (list, fn) => list.reduce((a, x) => a + fn(x), 0);
 const daysSince = iso => { const a = new Date(), b = new Date(iso); return Math.round((new Date(a.getFullYear(), a.getMonth(), a.getDate()) - new Date(b.getFullYear(), b.getMonth(), b.getDate())) / 86400000); };
@@ -454,7 +485,9 @@ const tagBadges = c => c.tags.map(t => `<span class="status ${tagInfo[t][0]}">${
 const phoneLinks = c => c.wa ? `<a href="tel:${esc(c.wa)}">${esc(c.phone)}</a> · <a href="https://wa.me/${esc(c.wa)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : esc(c.phone);
 
 function customers() {
-  const u = customerUI;
+  const u = customerUI, allC = buildCustomers(), zc = {};
+  allC.forEach(c => { zc[c.zone] = (zc[c.zone] || 0) + 1; });
+  const zones = Object.keys(zc).sort((a, b) => a.localeCompare(b, 'pt'));
   const tf = (label, control) => `<label class="tf">${label}${control}</label>`;
   return `${pageHead('Clientes', 'Histórico de encomendas e reconhecimento de clientes frequentes.')}
   <div id="cust-stats" class="stats-grid"></div>
@@ -462,8 +495,9 @@ function customers() {
     <div class="table-toolbar order-filters">
       ${tf('Pesquisar', `<input id="cf-q" placeholder="Nome, telefone ou zona..." value="${esc(u.q)}">`)}
       ${tf('Etiqueta', `<select id="cf-tag">${opt('all', 'Todos os clientes', u.tag)}${opt('frequent', 'Frequentes', u.tag)}${opt('new', 'Novos (1 encomenda)', u.tag)}${opt('cancel', 'Cancelam muito', u.tag)}</select>`)}
+      ${tf('Zona', `<select id="cf-zone">${opt('all', 'Todas as zonas', u.zone)}${zones.map(z => opt(z, `${esc(z)} (${zc[z]})`, u.zone)).join('')}</select>`)}
       ${tf('Ordenar por', `<select id="cf-sort">${opt('orders', 'Mais encomendas', u.sort)}${opt('spent', 'Maior valor gasto', u.sort)}${opt('last', 'Última encomenda', u.sort)}${opt('cancelled', 'Mais canceladas', u.sort)}${opt('name', 'Nome (A–Z)', u.sort)}</select>`)}
-      <button type="button" class="btn btn-outline" id="cf-clear">Limpar filtros</button>
+      <button type="button" class="btn btn-outline" id="cf-clear">Limpar filtros</button><button type="button" class="btn btn-primary" id="cf-bulk">Mensagem para estes clientes</button>
       <span class="toolbar-spacer"></span><small class="muted" id="cust-count"></small>
     </div>
     <div class="table-wrap"><table class="orders-table customers-table"><thead><tr><th>CLIENTE</th><th>ZONA PRINCIPAL</th><th>ENCOMENDAS</th><th>TOTAL GASTO</th><th>TICKET MÉDIO</th><th>ÚLTIMA ENCOMENDA</th><th>ETIQUETAS</th><th>AÇÕES</th></tr></thead><tbody id="cust-body"></tbody></table></div>
@@ -473,22 +507,25 @@ function customers() {
 function refreshCustomers() {
   const body = $('#cust-body'); if (!body) return;
   const all = buildCustomers(), u = customerUI, q = u.q.trim().toLowerCase();
-  const list = all.filter(c => (!q || [c.name, c.phone, c.zone].join(' ').toLowerCase().includes(q)) && (u.tag === 'all' || c.tags.includes(u.tag))).sort(customerSorters[u.sort] || customerSorters.orders);
+  const list = all.filter(c => (!q || [c.name, c.phone, c.zone].join(' ').toLowerCase().includes(q)) && (u.tag === 'all' || c.tags.includes(u.tag)) && (u.zone === 'all' || c.zone === u.zone)).sort(customerSorters[u.sort] || customerSorters.orders);
   const repeat = all.filter(c => c.valid >= 2).length;
   $('#cust-stats').innerHTML = stat('Clientes', all.length, 'Com pelo menos 1 encomenda', '☺')
     + stat('Frequentes', all.filter(c => c.tags.includes('frequent')).length, `${CUSTOMER_FREQUENT_MIN}+ encomendas válidas`, '★')
     + stat('Voltam a comprar', all.length ? Math.round(repeat / all.length * 100) + '%' : '—', `${repeat} com 2+ encomendas`, '↻')
     + stat('Cancelam muito', all.filter(c => c.tags.includes('cancel')).length, `${CUSTOMER_CANCEL_MIN}+ canceladas e ${Math.round(CUSTOMER_CANCEL_RATE * 100)}%+ do total`, '!');
   $('#cust-count').textContent = `${list.length} de ${all.length} cliente(s)`;
+  customerView = list;
+  const bb = $('#cf-bulk'); if (bb) { const n = list.filter(c => c.wa).length; bb.textContent = `Mensagem para estes clientes (${n})`; bb.disabled = !n; }
   body.innerHTML = list.length ? list.map(c => `<tr><td><strong>${esc(c.name)}</strong><small class="muted" style="display:block">${phoneLinks(c)}</small></td><td><span class="zone-tag">${esc(c.zone)}</span></td><td><span class="qty-pill">${c.valid}</span>${c.cancelled ? `<small class="muted"> + ${c.cancelled} cancelada(s)</small>` : ''}</td><td><strong>${money(c.spent)}</strong>${c.due ? `<small class="muted" style="display:block">Por pagar: ${money(c.due)}</small>` : ''}</td><td>${money(c.avg)}</td><td><strong>${new Date(c.last).toLocaleDateString('pt-AO')}</strong><small class="muted" style="display:block">${agoLabel(daysSince(c.last))}</small></td><td>${tagBadges(c)}</td><td><button class="action-btn" data-cust="${esc(c.key)}">Ficha</button></td></tr>`).join('')
     : `<tr><td colspan="8" class="empty-state">${all.length ? 'Nenhum cliente corresponde aos filtros.' : 'Ainda não existem clientes.'}</td></tr>`;
   body.querySelectorAll('[data-cust]').forEach(b => b.addEventListener('click', () => customerDetail(b.dataset.cust)));
 }
 
 function bindCustomerFilters() {
-  const map = { 'cf-q': 'q', 'cf-tag': 'tag', 'cf-sort': 'sort' };
+  const map = { 'cf-q': 'q', 'cf-tag': 'tag', 'cf-zone': 'zone', 'cf-sort': 'sort' };
   Object.entries(map).forEach(([id, k]) => { const el = $('#' + id); if (el) el.addEventListener('input', () => { customerUI[k] = el.value; refreshCustomers(); }); });
   $('#cf-clear')?.addEventListener('click', () => { Object.assign(customerUI, customerDefaults); render(); });
+  $('#cf-bulk')?.addEventListener('click', () => openBulk(customerView));
   refreshCustomers();
 }
 
@@ -500,6 +537,76 @@ function customerDetail(key) {
   openModal(`<div class="eyebrow">FICHA DO CLIENTE</div><h2>${esc(c.name)}</h2><p style="margin:-4px 0 14px">${tagBadges(c)}</p><div class="detail-grid">${cell('TELEFONE', phoneLinks(c))}${cell('ZONA PRINCIPAL', esc(c.zone))}${cell('ENCOMENDAS VÁLIDAS', c.valid)}${cell('CANCELADAS', `${c.cancelled} (${rate}%)`)}${cell('TOTAL GASTO', money(c.spent))}${cell('TICKET MÉDIO', money(c.avg))}${cell('UNIDADES COMPRADAS', c.units)}${cell('POR PAGAR', money(c.due))}${cell('PRIMEIRA ENCOMENDA', esc(new Date(c.first).toLocaleDateString('pt-AO')))}${cell('ÚLTIMA ENCOMENDA', esc(new Date(c.last).toLocaleDateString('pt-AO')) + ' · ' + agoLabel(daysSince(c.last)))}${cell('HISTÓRICO DE ENCOMENDAS (' + c.total + ')', `<div class="simple-list cust-history">${history}</div>`, true)}</div><div class="modal-actions"><button class="btn btn-outline" data-close-modal>Fechar</button></div>`);
   $('#modal-content').querySelector('[data-close-modal]').onclick = () => $('#app-modal').close();
   $('#modal-content').querySelectorAll('[data-order]').forEach(b => b.addEventListener('click', () => orderDetail(b.dataset.order)));
+}
+// ----- Mensagem em massa (um clique por cliente; o WhatsApp não permite envio automático) -----
+let customerView = [];
+const bulkMessage = (c, text) => waFill(text, waCustomerVars(c));
+function insertAtCursor(t, text) {
+  const s0 = t.selectionStart ?? t.value.length, e0 = t.selectionEnd ?? s0;
+  t.value = t.value.slice(0, s0) + text + t.value.slice(e0); t.focus(); t.selectionStart = t.selectionEnd = s0 + text.length;
+}
+function openBulk(list) {
+  const rec = list.filter(c => c.wa), skipped = list.length - rec.length, sent = new Set();
+  if (!rec.length) { toast('Nenhum cliente com telefone nesta seleção.'); return; }
+  const zone = customerUI.zone === 'all' ? '' : customerUI.zone;
+  const rows = rec.map((c, i) => `<div class="list-row"><div><strong>${esc(c.name)}</strong><small>${esc(c.phone)} · ${esc(c.zone)}</small></div><button type="button" class="action-btn" data-send="${i}">Enviar</button></div>`).join('');
+  openModal(`<div class="eyebrow">MENSAGEM EM MASSA</div><h2>${rec.length} cliente(s)${zone ? ' · ' + esc(zone) : ''}</h2>${skipped ? `<p class="muted">${skipped} cliente(s) sem telefone foram excluídos.</p>` : ''}<label class="field">Mensagem<textarea id="bulk-text" rows="6">${esc(waTemplates()[WA_BULK])}</textarea></label><div class="wa-vars">${BULK_VARS.map(k => `<button type="button" class="wa-var" data-var="${k}">{${k}}</button>`).join('')}</div><div class="wa-preview" id="bulk-preview"></div><div class="bulk-bar"><button type="button" class="btn btn-primary" id="bulk-next"></button><button type="button" class="btn btn-outline" id="bulk-copy">Copiar números</button><small class="muted" id="bulk-progress"></small></div><div class="simple-list bulk-list">${rows}</div><p class="muted bulk-note">O WhatsApp não permite envio automático: cada clique abre a conversa do cliente com a mensagem já escrita, e só tem de carregar em enviar. Envie apenas a clientes que já compraram e com intervalos, para evitar bloqueios do número.</p><div class="modal-actions"><button class="btn btn-outline" data-close-modal>Fechar</button></div>`);
+  const modal = $('#modal-content'), text = $('#bulk-text'), prev = $('#bulk-preview'), prog = $('#bulk-progress'), next = $('#bulk-next');
+  const refresh = () => {
+    prev.innerHTML = `<small>Pré-visualização · ${esc(rec[0].name)}</small><div class="wa-bubble">${esc(bulkMessage(rec[0], text.value))}</div>${waWarn(text.value, BULK_VARS)}`;
+    prog.textContent = `${sent.size} de ${rec.length} abertos`;
+    const left = rec.findIndex((_, i) => !sent.has(i));
+    next.disabled = left < 0; next.textContent = left < 0 ? 'Todos abertos ✓' : `Abrir o próximo (${rec[left].name})`;
+  };
+  const send = i => {
+    const c = rec[i];
+    window.open('https://wa.me/' + c.wa + '?text=' + encodeURIComponent(bulkMessage(c, text.value)), '_blank', 'noopener');
+    sent.add(i);
+    const b = modal.querySelector(`[data-send="${i}"]`); if (b) { b.textContent = 'Aberto ✓'; b.classList.add('sent'); }
+    refresh();
+  };
+  modal.querySelectorAll('[data-send]').forEach(b => b.addEventListener('click', () => send(Number(b.dataset.send))));
+  next.addEventListener('click', () => { const i = rec.findIndex((_, k) => !sent.has(k)); if (i >= 0) send(i); });
+  text.addEventListener('input', refresh);
+  modal.querySelectorAll('[data-var]').forEach(b => b.addEventListener('click', () => { insertAtCursor(text, '{' + b.dataset.var + '}'); refresh(); }));
+  $('#bulk-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(rec.map(c => '+' + c.wa).join('\n')); toast(`${rec.length} número(s) copiados.`); } catch { toast('Não foi possível copiar os números.'); } });
+  modal.querySelector('[data-close-modal]').onclick = () => $('#app-modal').close();
+  refresh();
+}
+
+// ----- Configurações: personalizar mensagens -----
+function waSettingsCard(d) {
+  const t = waTemplates(), missing = d.settings.id !== undefined && d.settings.whatsapp_templates === undefined;
+  const label = k => k === WA_BULK ? 'Mensagem para vários clientes (por zona)' : `Quando a encomenda fica «${k}»`;
+  return `<form id="wa-form" class="setting-card" style="margin-top:15px"><h3>Mensagens de WhatsApp</h3><p class="muted" style="margin:-6px 0 12px">Personalize o texto enviado aos clientes. Use as variáveis abaixo; uma linha com uma variável vazia (por exemplo, sem valor por pagar) é omitida.</p>${missing ? '<div class="wa-warn">Para guardar as mensagens, execute primeiro o ficheiro <strong>sql-whatsapp-mensagens.sql</strong> no SQL Editor do Supabase.</div>' : ''}<div class="wa-vars">${WA_VARS.map(([k, l]) => `<button type="button" class="wa-var" data-var="${k}" title="${esc(l)}">{${k}}</button>`).join('')}</div>${Object.keys(WA_DEFAULTS).map(k => `<label class="field">${label(k)}<textarea data-key="${esc(k)}" rows="${k === 'Confirmada' ? 7 : 5}">${esc(t[k])}</textarea></label>`).join('')}<div class="wa-preview" id="wa-preview"></div><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary">Guardar mensagens</button><button type="button" class="btn btn-outline" id="wa-reset">Repor mensagens padrão</button></div></form>`;
+}
+function bindWaSettings() {
+  const form = $('#wa-form'); if (!form) return;
+  const areas = [...form.querySelectorAll('textarea[data-key]')], prev = $('#wa-preview');
+  const sample = { reference: 'BQX-0001', createdAt: new Date().toISOString(), total: 4000, municipality_id: appState.municipalities[0]?.id || null, referencePoint: 'Perto da bomba de gasolina', status: 'Confirmada', items: [{ product_name: 'Fitas Clareadoras', quantity: 2 }], customer: { name: 'Maria Silva', phone: '923000000' } };
+  let last = areas[0];
+  const show = ta => {
+    last = ta;
+    const vars = ta.dataset.key === WA_BULK ? waCustomerVars({ name: sample.customer.name, zone: orderZone(sample) }) : waVars(sample);
+    prev.innerHTML = `<small>Pré-visualização · dados de exemplo</small><div class="wa-bubble">${esc(waFill(ta.value, vars))}</div>${waWarn(ta.value, ta.dataset.key === WA_BULK ? BULK_VARS : WA_VARS.map(v => v[0]))}`;
+  };
+  areas.forEach(ta => { ta.addEventListener('focus', () => show(ta)); ta.addEventListener('input', () => show(ta)); });
+  form.querySelectorAll('[data-var]').forEach(b => b.addEventListener('click', () => { if (!last) return; insertAtCursor(last, '{' + b.dataset.var + '}'); show(last); }));
+  const save = async obj => {
+    if (appState.settings.id !== undefined && appState.settings.whatsapp_templates === undefined) { toast('Execute primeiro o ficheiro sql-whatsapp-mensagens.sql no Supabase.'); return; }
+    try {
+      await must(supabase.from('store_settings').upsert({ id: 1, store_name: appState.settings.store_name || SHOP_NAME, whatsapp_templates: obj }));
+      toast('Mensagens guardadas.'); loadState();
+    } catch (err) { if (/whatsapp_templates/.test(err?.message || '')) toast('Execute primeiro o ficheiro sql-whatsapp-mensagens.sql no Supabase.'); else fail(err); }
+  };
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const obj = {};
+    areas.forEach(ta => { const v = ta.value.replace(/\r/g, '').trim(); if (v && v !== WA_DEFAULTS[ta.dataset.key].trim()) obj[ta.dataset.key] = v; });
+    await save(obj);
+  });
+  $('#wa-reset')?.addEventListener('click', async () => { if (confirm('Repor todas as mensagens para o texto padrão?')) await save({}); });
+  if (areas[0]) show(areas[0]);
 }
 // ===== fim WhatsApp e Clientes =====
 
@@ -601,6 +708,7 @@ function bindView() {
   bindActions(root);
   if (current === 'orders') bindOrderFilters();
   if (current === 'customers') bindCustomerFilters();
+  if (current === 'settings') bindWaSettings();
   $('[data-goto-dup]')?.addEventListener('click', () => { Object.assign(orderUI, orderDefaults, { alert: 'dup' }); current = 'orders'; $('#side-nav').querySelectorAll('button').forEach(x => x.classList.toggle('active', x.dataset.view === 'orders')); render(); });
   ['#product-search', '#product-filter', '#stock-search'].forEach(s => $(s)?.addEventListener('input', applyFilters));
   const sf = $('#settings-form');

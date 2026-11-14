@@ -67,4 +67,15 @@ a.action-btn,a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .table-wrap table.finance-table{min-width:760px}
 .finance-table thead th{position:sticky;top:0;z-index:1}
 .finance-table tfoot td{font-weight:800;background:#f6f1fd;color:#4b2a87;border-top:2px solid var(--line);position:sticky;bottom:0}
+.wa-vars{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.wa-var{border:1px solid var(--line);background:#f6f1fd;color:var(--purple);border-radius:20px;padding:4px 10px;font:600 10px Manrope,sans-serif;cursor:pointer}
+.wa-var:hover{background:#eee6fc}
+.wa-preview{margin:10px 0 14px}
+.wa-preview>small{display:block;color:var(--muted);font-size:9px;margin-bottom:6px}
+.wa-bubble{white-space:pre-wrap;background:#dcf8c6;color:#173b22;border-radius:12px 12px 12px 3px;padding:11px 13px;font-size:11px;line-height:1.5;max-width:460px}
+.wa-warn{background:#fff7e0;border:1px solid #f1dc9c;color:#7a5a00;border-radius:9px;padding:10px 12px;font-size:10px;margin-bottom:12px}
+.bulk-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 12px}
+.bulk-list{max-height:240px;overflow:auto}
+.bulk-note{font-size:9px;line-height:1.5;margin-top:10px}
+.action-btn.sent{background:#eaf8f0;color:#218255}
 
