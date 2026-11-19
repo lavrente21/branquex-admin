@@ -130,7 +130,7 @@ const orderPayment = o => {
 };
 const phoneKey = o => { const d = String(o.customer?.phone || '').replace(/\D/g, ''); return d.length > 9 ? d.slice(-9) : d; };
 const orderSig = o => (o.items || []).map(i => (i.product_id || i.product_name) + 'x' + i.quantity).sort().join('|');
-let orderFlagMap = new Map();
+let orderFlagMap = new Map(), dupRemovableIds = new Set();
 // Marca encomendas ativas do mesmo telefone no mesmo dia: "dup" = mesmos produtos e quantidades; senão, "multi".
 function orderFlags() {
   const groups = new Map(), flags = new Map();
@@ -160,6 +160,29 @@ function duplicateSummary() {
   let orders = 0, amount = 0;
   groups.forEach(g => { g.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); orders += g.length; amount += num(g[0].total); });
   return { orders, groups: groups.size, amount };
+}
+// Duplicadas a eliminar: em cada grupo mantém-se a 2.ª encomenda (por ordem de hora); as restantes são canceladas
+// (o stock volta ao armazém). Encomendas já Entregues/Levantadas nunca são tocadas.
+function dupRemovables() {
+  const flags = orderFlags(), groups = new Map(), out = [];
+  appState.orders.forEach(o => {
+    if (!flags.get(o.id)?.dup.length) return;
+    const k = phoneKey(o) + '#' + orderDay(o) + '#' + orderSig(o);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(o);
+  });
+  groups.forEach(g => { g.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); g.forEach((o, i) => { if (i === 1) return; if (o.status !== 'Entregue' && o.status !== 'Levantada') out.push(o); }); });
+  return out;
+}
+async function removeDuplicates(list, btn) {
+  if (!list.length) return toast('Não há duplicadas para eliminar.');
+  const amount = list.reduce((a, o) => a + num(o.total), 0);
+  if (!confirm(`Eliminar ${list.length} encomenda(s) duplicada(s) (${money(amount)})?\n\nFica sempre a 2.ª encomenda de cada grupo. As duplicadas são canceladas e o stock é devolvido.`)) return;
+  if (btn) btn.disabled = true;
+  let ok = 0, bad = 0;
+  for (const o of list) { try { await must(supabase.rpc('cancel_order', { p_order_id: o.id })); ok++; } catch (e) { bad++; console.error(o.reference, e); } }
+  toast(bad ? `${ok} eliminada(s); ${bad} falhou(aram).` : `${ok} duplicada(s) eliminada(s). Stock devolvido.`);
+  loadState();
 }
 function dupCard() {
   const r = duplicateSummary();
@@ -193,7 +216,7 @@ function filteredOrders() {
   const hasHours = u.hFrom !== '' || u.hTo !== '';
   const hf = u.hFrom === '' ? 0 : num(u.hFrom), ht = u.hTo === '' ? 23 : num(u.hTo);
   const inHours = h => hf <= ht ? (h >= hf && h <= ht) : (h >= hf || h <= ht);
-  orderFlagMap = orderFlags();
+  orderFlagMap = orderFlags(); dupRemovableIds = new Set(dupRemovables().map(o => o.id));
   const qmin = u.qMin === '' ? -Infinity : num(u.qMin), qmax = u.qMax === '' ? Infinity : num(u.qMax);
   return appState.orders.filter(o => {
     const qty = orderQty(o), day = orderDay(o);
@@ -233,7 +256,7 @@ function orders(d) {
       ${tf('Alertas', `<select id="of-alert">${opt('all', 'Todas', u.alert)}${opt('any', 'Só marcadas', u.alert)}${opt('dup', 'Duplicadas', u.alert)}${opt('multi', 'Cliente com 2+ encomendas', u.alert)}</select>`)}
       ${tf('Ordenar por', `<select id="of-sort">${opt('recent', 'Mais recentes', u.sort)}${opt('oldest', 'Mais antigas', u.sort)}${opt('hour', 'Hora do dia (cedo → tarde)', u.sort)}${opt('zone', 'Zona (A–Z)', u.sort)}${opt('qtyDesc', 'Quantidade (maior → menor)', u.sort)}${opt('qtyAsc', 'Quantidade (menor → maior)', u.sort)}${opt('total', 'Total (maior → menor)', u.sort)}</select>`)}
       ${tf('Agrupar por', `<select id="of-group">${opt('none', 'Sem agrupamento', u.group)}${opt('hour', 'Hora', u.group)}${opt('zone', 'Zona', u.group)}${opt('qty', 'Quantidade', u.group)}${opt('day', 'Dia', u.group)}</select>`)}
-      <button type="button" class="btn btn-outline" id="of-clear">Limpar filtros</button>
+      <button type="button" class="btn btn-outline" id="of-clear">Limpar filtros</button>${dupRemovables().length ? `<button type="button" class="btn btn-danger" id="of-del-dups">Eliminar duplicadas (${dupRemovables().length})</button>` : ''}
       <span class="toolbar-spacer"></span><small class="muted" id="orders-count"></small>
     </div>
     <div class="table-wrap"><table class="orders-table"><thead><tr><th>REFERÊNCIA</th><th>CLIENTE</th><th>LOCALIZAÇÃO</th><th>PRODUTO(S)</th><th>QTD.</th><th>ENTREGA</th><th>TOTAL</th><th>PAGAMENTO</th><th>OBSERVAÇÕES</th><th>HORA</th><th>ESTADO</th><th>AÇÕES</th></tr></thead><tbody id="orders-body"></tbody></table></div>
@@ -245,7 +268,7 @@ function orderRow(o) {
   const digits = String(o.customer?.phone || '').replace(/\D/g, '');
   const wa = digits ? 'https://wa.me/' + (digits.length === 9 ? '244' + digits : digits) : '';
   const phone = digits ? `<a href="tel:${esc(digits)}">${esc(o.customer.phone)}</a> · <a href="${esc(wa)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : '';
-  return `<tr class="${fl ? (fl.dup.length ? 'flagged-dup' : 'flagged-multi') : ''}"><td><strong>${esc(o.reference)}</strong>${flagBadge(fl)}</td><td>${esc(o.customer?.name || 'Desconhecido')}<small class="muted" style="display:block">${phone}</small></td><td class="wrap-cell"><span class="zone-tag">${esc(orderZone(o))}</span>${prov ? `<small class="muted"> ${esc(prov)}</small>` : ''}<small class="muted" style="display:block;margin-top:4px">${o.referencePoint ? esc(o.referencePoint) : 'Sem ponto de referência'}</small></td><td>${(o.items || []).map(i => esc(i.product_name) + ' × ' + esc(i.quantity)).join('<br>')}</td><td><span class="qty-pill">${orderQty(o)}</span></td><td>${o.deliveryFee != null ? money(o.deliveryFee) : '—'}</td><td><strong>${money(o.total)}</strong></td><td><span class="status ${pay.cls}">${pay.label}</span>${pay.paid ? `<small class="muted" style="display:block;margin-top:3px">${money(pay.paid)}</small>` : ''}</td><td class="wrap-cell">${o.notes ? esc(o.notes) : '<span class="muted">—</span>'}</td><td><strong>${pad2(d.getHours())}:${pad2(d.getMinutes())}</strong><small class="muted" style="display:block">${d.toLocaleDateString('pt-AO')}</small></td><td><span class="status ${statusClass(o.status)}">${esc(o.status)}</span></td><td>${waPhone(o) ? `<a class="action-btn wa-btn" href="${esc(waLink(o, waMessage(o)))}" target="_blank" rel="noopener noreferrer" title="Mensagem pronta para o estado: ${esc(o.status)}">WhatsApp</a>` : ''}<button class="action-btn" data-action="order-detail" data-id="${o.id}">Detalhes</button><button class="action-btn" data-action="next-status" data-id="${o.id}">Avançar</button></td></tr>`;
+  return `<tr class="${fl ? (fl.dup.length ? 'flagged-dup' : 'flagged-multi') : ''}"><td><strong>${esc(o.reference)}</strong>${flagBadge(fl)}</td><td>${esc(o.customer?.name || 'Desconhecido')}<small class="muted" style="display:block">${phone}</small></td><td class="wrap-cell"><span class="zone-tag">${esc(orderZone(o))}</span>${prov ? `<small class="muted"> ${esc(prov)}</small>` : ''}<small class="muted" style="display:block;margin-top:4px">${o.referencePoint ? esc(o.referencePoint) : 'Sem ponto de referência'}</small></td><td>${(o.items || []).map(i => esc(i.product_name) + ' × ' + esc(i.quantity)).join('<br>')}</td><td><span class="qty-pill">${orderQty(o)}</span></td><td>${o.deliveryFee != null ? money(o.deliveryFee) : '—'}</td><td><strong>${money(o.total)}</strong></td><td><span class="status ${pay.cls}">${pay.label}</span>${pay.paid ? `<small class="muted" style="display:block;margin-top:3px">${money(pay.paid)}</small>` : ''}</td><td class="wrap-cell">${o.notes ? esc(o.notes) : '<span class="muted">—</span>'}</td><td><strong>${pad2(d.getHours())}:${pad2(d.getMinutes())}</strong><small class="muted" style="display:block">${d.toLocaleDateString('pt-AO')}</small></td><td><span class="status ${statusClass(o.status)}">${esc(o.status)}</span></td><td>${waPhone(o) ? `<a class="action-btn wa-btn" href="${esc(waLink(o, waMessage(o)))}" target="_blank" rel="noopener noreferrer" title="Mensagem pronta para o estado: ${esc(o.status)}">WhatsApp</a>` : ''}${dupRemovableIds.has(o.id) ? `<button class="action-btn danger" data-action="remove-dup" data-id="${o.id}" title="Cancelar esta duplicada e devolver o stock">Eliminar</button>` : ''}<button class="action-btn" data-action="order-detail" data-id="${o.id}">Detalhes</button><button class="action-btn" data-action="next-status" data-id="${o.id}">Avançar</button></td></tr>`;
 }
 
 function ordersStats(list) {
@@ -284,6 +307,7 @@ function refreshOrders() {
 function bindOrderFilters() {
   const map = { 'of-q': 'q', 'of-status': 'status', 'of-zone': 'zone', 'of-from': 'from', 'of-to': 'to', 'of-hfrom': 'hFrom', 'of-hto': 'hTo', 'of-qmin': 'qMin', 'of-qmax': 'qMax', 'of-sort': 'sort', 'of-group': 'group', 'of-alert': 'alert' };
   Object.entries(map).forEach(([id, k]) => { const el = $('#' + id); if (el) el.addEventListener('input', () => { orderUI[k] = el.value; refreshOrders(); }); });
+  $('#of-del-dups')?.addEventListener('click', e => removeDuplicates(dupRemovables(), e.currentTarget));
   $('#of-clear')?.addEventListener('click', () => { Object.assign(orderUI, orderDefaults); render(); });
   refreshOrders();
 }
@@ -691,6 +715,7 @@ function bindActions(scope) {
       b.disabled = true;
       if (act === 'toggle-product') { const p = get('products'); await must(supabase.from('products').update({ published: !p.published }).eq('id', id)); }
       else if (act === 'delete-product') { if (!confirm('Eliminar este produto?')) { b.disabled = false; return; } await must(supabase.from('products').delete().eq('id', id)); toast('Produto eliminado.'); }
+      else if (act === 'remove-dup') { const o = get('orders'); if (!confirm(`Eliminar a duplicada ${o.reference}? A encomenda é cancelada e o stock devolvido.`)) { b.disabled = false; return; } await must(supabase.rpc('cancel_order', { p_order_id: id })); toast('Duplicada eliminada.'); }
       else if (act === 'toggle-zone') { const z = get('municipalities'); await must(supabase.from('municipalities').update({ active: !z.active }).eq('id', id)); }
       else if (act === 'delete-zone') { if (!confirm('Eliminar este município?')) { b.disabled = false; return; } await must(supabase.from('municipalities').delete().eq('id', id)); toast('Município eliminado.'); }
       else if (act === 'next-status') {
