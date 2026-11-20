@@ -130,8 +130,9 @@ const orderPayment = o => {
 };
 const phoneKey = o => { const d = String(o.customer?.phone || '').replace(/\D/g, ''); return d.length > 9 ? d.slice(-9) : d; };
 const orderSig = o => (o.items || []).map(i => (i.product_id || i.product_name) + 'x' + i.quantity).sort().join('|');
+const DUP_MIN_ORDERS = 2; // nº de encomendas ativas do mesmo telefone, no mesmo dia, a partir do qual contam como duplicadas
 let orderFlagMap = new Map(), dupRemovableIds = new Set();
-// Marca encomendas ativas do mesmo telefone no mesmo dia: "dup" = mesmos produtos e quantidades; senão, "multi".
+// Marca encomendas ativas do mesmo telefone no mesmo dia: "dup" = o telefone tem DUP_MIN_ORDERS ou mais encomendas nesse dia (mesmos produtos ou não).
 function orderFlags() {
   const groups = new Map(), flags = new Map();
   appState.orders.filter(o => o.status !== 'Cancelada' && phoneKey(o)).forEach(o => {
@@ -143,17 +144,17 @@ function orderFlags() {
     if (list.length < 2) return;
     list.forEach(o => {
       const others = list.filter(x => x !== o);
-      flags.set(o.id, { dup: others.filter(x => orderSig(x) === orderSig(o)).map(x => x.reference), others: others.map(x => x.reference) });
+      flags.set(o.id, { dup: list.length >= DUP_MIN_ORDERS ? others.map(x => x.reference) : [], others: others.map(x => x.reference) });
     });
   });
   return flags;
 }
-// Duplicadas = mesmo telefone, mesmo dia e mesmos produtos/quantidades. O montante conta só a 1.ª de cada grupo.
+// Duplicadas = mesmo telefone e mesmo dia (ver DUP_MIN_ORDERS). O montante conta só a 1.ª de cada grupo.
 function duplicateSummary() {
   const flags = orderFlags(), groups = new Map();
   appState.orders.forEach(o => {
     if (!flags.get(o.id)?.dup.length) return;
-    const k = phoneKey(o) + '#' + orderDay(o) + '#' + orderSig(o);
+    const k = phoneKey(o) + '#' + orderDay(o);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(o);
   });
@@ -167,7 +168,7 @@ function dupRemovables() {
   const flags = orderFlags(), groups = new Map(), out = [];
   appState.orders.forEach(o => {
     if (!flags.get(o.id)?.dup.length) return;
-    const k = phoneKey(o) + '#' + orderDay(o) + '#' + orderSig(o);
+    const k = phoneKey(o) + '#' + orderDay(o);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(o);
   });
@@ -634,6 +635,14 @@ function bindWaSettings() {
 }
 // ===== fim WhatsApp e Clientes =====
 
+const orderLocked = o => ['Cancelada', 'Entregue', 'Levantada'].includes(o.status);
+function transferBox(o) {
+  if (orderLocked(o)) return '';
+  const zones = appState.municipalities.filter(m => m.active !== false && m.id !== o.municipality_id);
+  if (!zones.length) return '';
+  const opts = zones.map(m => `<option value="${esc(m.id)}">${esc(m.name)} — ${esc(m.province)} (${money(m.fee)})</option>`).join('');
+  return `<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin:14px 0"><label class="field" style="flex:1;min-width:220px;margin:0">Transferir para outra zona<select id="modal-transfer-zone">${opts}</select></label><button type="button" class="btn btn-outline" id="btn-transfer-zone">Transferir zona</button></div>`;
+}
 function orderDetail(id) {
   const o = appState.orders.find(x => x.id === id); if (!o) return;
   const mun = appState.municipalities.find(x => x.id === o.municipality_id);
@@ -641,9 +650,18 @@ function orderDetail(id) {
   const wa = digits ? 'https://wa.me/' + (digits.length === 9 ? '244' + digits : digits) : '';
   const cell = (l, v, wide) => `<div class="detail-item${wide ? ' detail-wide' : ''}"><small>${l}</small><strong>${v || '—'}</strong></div>`;
   const items = (o.items || []).map(i => `<li>${esc(i.product_name)} × ${esc(i.quantity)}</li>`).join('');
-  openModal(`<div class="eyebrow">DETALHES DA ENCOMENDA</div><h2>${esc(o.reference)}</h2><div class="detail-grid">${cell('CLIENTE', esc(o.customer?.name))}${cell('TELEFONE', digits ? `<a href="tel:${esc(digits)}">${esc(o.customer.phone)}</a> · <a href="${esc(wa)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : '')}${cell('MUNICÍPIO', mun ? esc(mun.name + ' — ' + mun.province) : '')}${cell('DATA', esc(new Date(o.createdAt).toLocaleString('pt-AO')))}${cell('REFERÊNCIA DO LOCAL', esc(o.referencePoint), true)}${cell('OBSERVAÇÕES', esc(o.notes), true)}${cell('PRODUTOS', items ? `<ul class="detail-list">${items}</ul>` : '', true)}${cell('TAXA DE ENTREGA', o.deliveryFee != null ? money(o.deliveryFee) : '')}${cell('TOTAL', money(o.total))}${cell('ESTADO', `<span class="status ${statusClass(o.status)}">${esc(o.status)}</span>`)}${cell('PAGAMENTO', `${orderPayment(o).label}${orderPayment(o).paid ? ' · ' + money(orderPayment(o).paid) : ''}`)}${(() => { const f = orderFlags().get(o.id); return f ? cell('ALERTA', f.dup.length ? 'Duplicada · igual a ' + esc(f.dup.join(', ')) : f.others.length + 1 + ' encomendas do mesmo cliente hoje · ' + esc(f.others.join(', '))) : ''; })()}</div>${waBox(o)}<div class="modal-actions"><button class="btn btn-outline" data-close-modal>Fechar</button><label class="field">Alterar estado<select id="modal-order-status">${statuses.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}</select></label><button class="btn btn-primary" id="btn-save-order-status">Guardar estado</button></div>`);
+  openModal(`<div class="eyebrow">DETALHES DA ENCOMENDA</div><h2>${esc(o.reference)}</h2><div class="detail-grid">${cell('CLIENTE', esc(o.customer?.name))}${cell('TELEFONE', digits ? `<a href="tel:${esc(digits)}">${esc(o.customer.phone)}</a> · <a href="${esc(wa)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : '')}${cell('MUNICÍPIO', mun ? esc(mun.name + ' — ' + mun.province) : '')}${cell('DATA', esc(new Date(o.createdAt).toLocaleString('pt-AO')))}${cell('REFERÊNCIA DO LOCAL', esc(o.referencePoint), true)}${cell('OBSERVAÇÕES', esc(o.notes), true)}${cell('PRODUTOS', items ? `<ul class="detail-list">${items}</ul>` : '', true)}${cell('TAXA DE ENTREGA', o.deliveryFee != null ? money(o.deliveryFee) : '')}${cell('TOTAL', money(o.total))}${cell('ESTADO', `<span class="status ${statusClass(o.status)}">${esc(o.status)}</span>`)}${cell('PAGAMENTO', `${orderPayment(o).label}${orderPayment(o).paid ? ' · ' + money(orderPayment(o).paid) : ''}`)}${(() => { const f = orderFlags().get(o.id); return f ? cell('ALERTA', f.dup.length ? 'Duplicada · mesmo telefone hoje · ' + esc(f.dup.join(', ')) : f.others.length + 1 + ' encomendas do mesmo cliente hoje · ' + esc(f.others.join(', '))) : ''; })()}</div>${transferBox(o)}${waBox(o)}<div class="modal-actions"><button class="btn btn-outline" data-close-modal>Fechar</button><label class="field">Alterar estado<select id="modal-order-status">${statuses.map(st => `<option value="${st}" ${st === o.status ? 'selected' : ''}>${st}</option>`).join('')}</select></label><button class="btn btn-primary" id="btn-save-order-status">Guardar estado</button></div>`);
   $('#modal-content').querySelector('[data-close-modal]').onclick = () => $('#app-modal').close();
   bindWaBox(o);
+  const tz = $('#btn-transfer-zone');
+  if (tz) tz.onclick = async () => {
+    const m = appState.municipalities.find(x => x.id === $('#modal-transfer-zone').value); if (!m) return;
+    const diff = num(m.fee) - num(o.deliveryFee), novo = num(o.total) + diff;
+    if (!confirm(`Transferir ${o.reference} para ${m.name}?\n\nTaxa de entrega: ${money(o.deliveryFee || 0)} → ${money(m.fee)}\nTotal: ${money(o.total)} → ${money(novo)}`)) return;
+    tz.disabled = true;
+    try { await must(supabase.rpc('transfer_order_zone', { p_order_id: id, p_municipality_id: m.id })); $('#app-modal').close(); toast('Encomenda transferida para ' + m.name + '.'); loadState(); }
+    catch (err) { fail(err); } finally { tz.disabled = false; }
+  };
   $('#btn-save-order-status').onclick = async ev => {
     const btn = ev.currentTarget, status = $('#modal-order-status').value; btn.disabled = true;
     try {
